@@ -1,0 +1,22 @@
+{
+    "name": "mytoken/sdk",
+    "description": "sdk for mytoken.io",
+    "type": "library",
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/",
+            "Zim\\": "Zim/"
+        }
+    },
+    "require": {
+        "symfony/routing": "^4.1",
+        "symfony/config": "^4.1",
+        "symfony/http-foundation": "^4.1"
+    },
+    "repositories": {
+        "packagist": {
+            "type": "composer",
+            "url": "https://packagist.laravel-china.org"
+        }
+    }
+}

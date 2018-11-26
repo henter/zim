@@ -1,0 +1,30 @@
+# Cache and logs
+/vendor/
+logs/*
+# Composer PHAR
+/composer.phar
+
+.DS_Store
+/.idea
+/.vscode
+# tags Files
+/.tags
+/.tags*
+/.tags_sorted_by_file
+/resetData.sh
+
+*.php~
+*.swap
+*.swp
+*.swo
+*.bak
+*.ini
+*.log
+
+# Kdevelop IDE
+.kdev4
+*.kdev4
+
+#IDE ZEND STUDIO
+.buildpath
+.project
