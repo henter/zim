@@ -26,4 +26,9 @@ class IndexController extends Controller
     {
         return 'hello index test';
     }
+
+    public function test_methodAction()
+    {
+        return 'test method';
+    }
 }

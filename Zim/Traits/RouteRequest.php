@@ -49,7 +49,26 @@ trait RouteRequest
     }
 
     /**
-     * TODO controller驼峰命名时可能异常
+     * 根据 uri 猜测 controller 类名
+     * @param string $uri
+     * @return string|bool
+     */
+    private function guessAppController($uri)
+    {
+        if (file_exists(APP_PATH.'/Controller/'.ucfirst($uri).'Controller.php')) {
+            return ucfirst($uri).'Controller';
+        }
+
+        $files = glob(APP_PATH. '/Controller/*Controller.php');
+        foreach ($files as $file) {
+            if (strtolower(basename($file)) == $uri) {
+                return rtrim(basename($file), '.php');
+            }
+        }
+        return false;
+    }
+
+    /**
      * @param Request $request
      * @return mixed
      * @throws \Throwable
@@ -61,23 +80,23 @@ trait RouteRequest
             throw new NotFoundException('path not found');
         }
         list(, $c, $a) = explode('/', $request->getPathInfo());
-        $controllerClass = 'App\\Controller\\'.ucfirst($c).'Controller';
-        if (!class_exists($controllerClass)) {
+
+        //try controller
+        if (!$c = $this->guessAppController($c)) {
             throw new NotFoundException('controller not found');
         }
 
         /**
          * @var Controller $controller
          */
-        $controller = App::getInstance()->make($controllerClass);
+        $controller = App::getInstance()->make('App\\Controller\\'.$c);
 
-        //check action method, support camelcase action name like someCamelCaseAction
-        $methods = array_map('strtolower', get_class_methods($controller));
-        if (in_array($a.'action', $methods)) {
-            return call_user_func_array([$controller, $a.'Action'], []);
+        //try controller method ?
+        if ($method = $controller->getMethod($a)) {
+            return call_user_func_array([$controller, $method], []);
         }
 
-        //check action file
+        //try controller action class
         $actionClass = $controller->getAction($a);
         if (!class_exists($actionClass)) {
             throw new NotFoundException('action not found');
