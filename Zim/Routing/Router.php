@@ -12,6 +12,8 @@ namespace Zim\Routing;
 use Symfony\Component\Routing\Matcher\UrlMatcher;
 use Symfony\Component\Routing\RequestContext;
 use Symfony\Component\Routing\RouteCollection;
+use Zim\App;
+use Zim\Http\Exception\NotFoundException;
 
 class Router
 {
@@ -25,21 +27,16 @@ class Router
      */
     protected $matcher;
 
-    public static function demoConfig()
-    {
-        return [
-            //['/', 'Index@index'],
-            ['/test', 'Index@test'],
-            ['/foo', 'Foo@index'],
-            ['/foo/test', 'Foo@foo'],
-        ];
-    }
-
-    public static function demoRoutes()
+    /**
+     * load from config
+     *
+     * @return RouteCollection
+     */
+    public static function loadRoutes()
     {
         $routes = new RouteCollection();
 
-        $configRoutes = self::demoConfig();
+        $configRoutes = App::getInstance()->make('config')->get('routes');
         foreach ($configRoutes as list($pattern, $to)) {
             list($controller, $action) = explode('@', $to);
             $routes->add($pattern, new Route($pattern, ['_controller' => 'App\\Controller\\'.$controller.'Controller', '_action' => $action.'Action']));
@@ -50,7 +47,7 @@ class Router
 
     public function __construct()
     {
-        $this->routes = self::demoRoutes();
+        $this->routes = self::loadRoutes();
         $this->matcher = new UrlMatcher($this->routes, new RequestContext('/'));
     }
 
@@ -60,7 +57,11 @@ class Router
      */
     public function match($uri)
     {
-        return $this->matcher->match($uri);
+        try {
+            return $this->matcher->match($uri);
+        } catch (\Exception $e) {
+            throw new NotFoundException($uri.' not found');
+        }
     }
 
 }

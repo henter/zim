@@ -7,35 +7,222 @@
  */
 namespace Zim;
 
+use Zim\Config\ConfigInterface;
+use Zim\Container\Container;
 use Zim\Debug\ErrorHandler;
 use Zim\Debug\ExceptionHandler;
 use Zim\Event\Dispatcher;
-use Zim\Event\Event;
-use Zim\Event\RequestEvent;
-use Zim\Http\Exception\NotFoundException;
-use Zim\Http\Exception\ResponseException;
 use Zim\Routing\Router;
-use Zim\Http\Request;
-use Zim\Http\Response;
-use Symfony\Component\Routing\Exception\ResourceNotFoundException;
+use Zim\Traits\AppHelper;
+use Zim\Traits\RouteRequest;
+use Zim\Config\Config;
 
-class App
+class App extends Container
 {
+    const VERSION = 'Zim (1.0.0)';
+
+    use AppHelper;
+    use RouteRequest;
+
+    /**
+     * All of the loaded configuration files.
+     *
+     * @var array
+     */
+    protected $loadedConfigurations = [];
+
+    /**
+     * The base path of the application installation.
+     *
+     * @var string
+     */
+    protected $basePath;
+
     /**
      * @var Router
      */
     protected $router;
 
-    /**
-     * @var Dispatcher
-     */
-    protected $dispatcher;
-
     public function __construct()
     {
-        $this->dispatcher = new Dispatcher();
+        $this->bootstrapContainer();
+        $this->registerErrorHandling();
+
+        //config
+        $this->singleton('config', function () {
+            return new Config();
+        });
+        $this->configure('app');
+        $this->configure('routes');
+
+        //router after config
         $this->router = new Router();
-        $this->debug();
+
+        //event
+        $this->singleton(Dispatcher::class);
+    }
+
+    /**
+     * Get the version number of the application.
+     *
+     * @return string
+     */
+    public function version()
+    {
+        return static::VERSION;
+    }
+
+    /**
+     * Bootstrap the application container.
+     *
+     * @return void
+     */
+    protected function bootstrapContainer()
+    {
+        static::setInstance($this);
+
+        $this->instance('app', $this);
+        $this->instance(self::class, $this);
+        $this->instance('env', $this->env());
+
+        $this->registerContainerAliases();
+    }
+
+    /**
+     * Determine if the application is running in the console.
+     *
+     * @return bool
+     */
+    public function runningInConsole()
+    {
+        return php_sapi_name() === 'cli' || php_sapi_name() === 'phpdbg';
+    }
+
+    /**
+     * Get the base path for the application.
+     *
+     * @param  string|null  $path
+     * @return string
+     */
+    public function basePath($path = null)
+    {
+        if (isset($this->basePath)) {
+            return $this->basePath.($path ? '/'.$path : $path);
+        }
+
+        if ($this->runningInConsole()) {
+            $this->basePath = getcwd();
+        } else {
+            $this->basePath = realpath(getcwd().'/../');
+        }
+
+        return $this->basePath($path);
+    }
+
+    /**
+     * Load a configuration file into the application.
+     *
+     * @param  string  $name
+     * @return void
+     */
+    public function configure($name)
+    {
+        if (isset($this->loadedConfigurations[$name])) {
+            return;
+        }
+
+        $this->loadedConfigurations[$name] = true;
+
+        $path = $this->getConfigurationPath($name);
+
+        if ($path) {
+            $this->make('config')->set($name, require $path);
+        }
+    }
+
+
+    /**
+     * Get the path to the given configuration file.
+     *
+     * If no name is provided, then we'll return the path to the config folder.
+     *
+     * @param  string|null  $name
+     * @return string
+     */
+    public function getConfigurationPath($name = null)
+    {
+        if (! $name) {
+            $appConfigDir = $this->basePath('config').'/';
+
+            if (file_exists($appConfigDir)) {
+                return $appConfigDir;
+            } elseif (file_exists($path = __DIR__.'/../config/')) {
+                return $path;
+            }
+        } else {
+            $appConfigPath = $this->basePath('config').'/'.$name.'.php';
+
+            if (file_exists($appConfigPath)) {
+                return $appConfigPath;
+            } elseif (file_exists($path = __DIR__.'/../config/'.$name.'.php')) {
+                return $path;
+            }
+        }
+    }
+
+    /**
+     * Register the core container aliases.
+     *
+     * @return void
+     */
+    protected function registerContainerAliases()
+    {
+        $this->aliases = [
+            ConfigInterface::class => 'config',
+            //TODO
+            'Illuminate\Contracts\Foundation\Application' => 'app',
+            'Illuminate\Contracts\Cache\Factory' => 'cache',
+            'Illuminate\Contracts\Cache\Repository' => 'cache.store',
+            'Illuminate\Container\Container' => 'app',
+            'Illuminate\Contracts\Container\Container' => 'app',
+            'Illuminate\Contracts\Events\Dispatcher' => 'events',
+            'log' => 'Psr\Log\LoggerInterface',
+            'request' => 'Illuminate\Http\Request',
+            'Laravel\Lumen\Routing\Router' => 'router',
+        ];
+    }
+
+    public function env()
+    {
+        //TODO
+        return 'dev';
+    }
+
+    /**
+     * Set the error handling for the application.
+     *
+     * @return void
+     */
+    protected function registerErrorHandling()
+    {
+        //TODO
+        return $this->debug();
+
+        error_reporting(-1);
+
+        set_error_handler(function ($level, $message, $file = '', $line = 0) {
+            if (error_reporting() & $level) {
+                throw new \ErrorException($message, 0, $level, $file, $line);
+            }
+        });
+
+        set_exception_handler(function ($e) {
+            $this->handleUncaughtException($e);
+        });
+
+        register_shutdown_function(function () {
+            $this->handleShutdown();
+        });
     }
 
     public function debug()
@@ -44,9 +231,7 @@ class App
 
         if (!\in_array(\PHP_SAPI, array('cli', 'phpdbg'), true)) {
             ini_set('display_errors', 0);
-            ExceptionHandler::register()->setHandler(function($e){
-                throw $e;
-            });
+            ExceptionHandler::register();
         } elseif ((!filter_var(ini_get('log_errors'), FILTER_VALIDATE_BOOLEAN) || ini_get('error_log'))) {
             // CLI - display errors only if they're not already logged to STDERR
             ini_set('display_errors', 1);
@@ -54,105 +239,5 @@ class App
         ErrorHandler::register();
     }
 
-    /**
-     * @param null $request
-     * @throws \Throwable
-     */
-    public function run($request = null)
-    {
-        $this->dispatcher->dispatch(new RequestEvent($request));
 
-        $response = $this->handle($request);
-        $this->dispatcher->dispatch(Event::RESPONSE);
-
-        $response->send();
-        $this->terminate($request, $response);
-    }
-
-    public function terminate($request, $response)
-    {
-        $this->dispatcher->dispatch(Event::TERMINATE);
-    }
-
-    /**
-     * @param  array $routeInfo
-     * @return mixed|string|array|bool|Response
-     */
-    protected function callControllerMethod($routeInfo)
-    {
-        $instance = new $routeInfo['_controller'];
-
-        if (!method_exists($instance, $routeInfo['_action'])) {
-            return '404 not found method';
-        }
-
-        return call_user_func_array([$instance, $routeInfo['_action']], ['xx']);
-    }
-
-    /**
-     * TODO controller驼峰命名时可能异常
-     * @param Request $request
-     * @return mixed
-     * @throws \Throwable
-     */
-    public function callControllerAction(Request $request)
-    {
-        $segments = explode('/', $request->getPathInfo());
-        if (count($segments) < 3) {
-            throw new NotFoundException('path not found');
-        }
-        list(, $c, $a) = explode('/', $request->getPathInfo());
-        $controllerClass = 'App\\Controller\\'.ucfirst($c).'Controller';
-        if (!class_exists($controllerClass)) {
-            throw new NotFoundException('controller not found');
-        }
-        $actionClass = (new $controllerClass)->getAction($a);
-        if (!class_exists($actionClass)) {
-            throw new NotFoundException('action not found');
-        }
-
-        try {
-            $return = (new $actionClass)->execute();
-        } catch (\Throwable $e) {
-            throw $e;
-        }
-        return $return;
-    }
-
-    /**
-     * @param Request|null $request
-     * @return Response
-     * @throws \Throwable
-     */
-    public function handle(Request $request = null)
-    {
-        $request = $request ?: Request::createFromGlobals();
-
-        try {
-            $routeInfo = $this->router->match($request->getPathInfo());
-            $actionReturn = $this->callControllerAction($routeInfo);
-        } catch (ResourceNotFoundException $e) {
-            $actionReturn = $this->callControllerAction($request);
-        } catch (\Throwable $e) {
-            return $this->errorResponse('exception '.$e->getMessage())->prepare($request);
-        }
-
-        if ($actionReturn instanceof Response) {
-            $response = $actionReturn;
-        } else if (is_array($actionReturn) || is_scalar($actionReturn)) {
-            $response = new Response($actionReturn);
-        } else {
-            throw new ResponseException('invalid response');
-        }
-        return $response->prepare($request);
-    }
-
-    /**
-     * @param $msg
-     * @return Response
-     */
-    public function errorResponse($msg)
-    {
-        return new Response($msg);
-    }
 }

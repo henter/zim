@@ -6,9 +6,10 @@
  *
  */
 
-//return [
-//    ['/index', 'Index@index'],
-//    ['/foo', 'Index@foo'],
-//    ['/test', 'Index@test'],
-//];
+return [
+    ['/', 'Index@index'],
+    ['/test', 'Index@test'],
+    ['/foo', 'Foo@index'],
+    ['/foo/test', 'Foo@foo'],
+];
 

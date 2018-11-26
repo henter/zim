@@ -11,4 +11,8 @@ namespace App\Action\Index;
 class PageAction extends \Zim\Routing\Action
 {
 
+    public function execute()
+    {
+        return 'page response test';
+    }
 }
