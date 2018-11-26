@@ -11,8 +11,6 @@
 
 namespace Zim\Debug;
 
-use Symfony\Component\HttpFoundation\Exception\RequestExceptionInterface;
-use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 /**
  * FlattenException wraps a PHP Error or Exception to be able to serialize it.
@@ -44,11 +42,9 @@ class FlattenException
         $e->setMessage($exception->getMessage());
         $e->setCode($exception->getCode());
 
-        if ($exception instanceof HttpExceptionInterface) {
+        if ($exception instanceof \Zim\Http\Exception\ExceptionInterface) {
             $statusCode = $exception->getStatusCode();
             $headers = array_merge($headers, $exception->getHeaders());
-        } elseif ($exception instanceof RequestExceptionInterface) {
-            $statusCode = 400;
         }
 
         if (null === $statusCode) {

@@ -51,7 +51,7 @@ class App
             // CLI - display errors only if they're not already logged to STDERR
             ini_set('display_errors', 1);
         }
-        ErrorHandler::register(new ErrorHandler());
+        ErrorHandler::register();
     }
 
     /**

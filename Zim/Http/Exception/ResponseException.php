@@ -8,7 +8,7 @@
 
 namespace Zim\Http\Exception;
 
-class ResponseException extends \RuntimeException
+class ResponseException extends Exception
 {
 
 }
