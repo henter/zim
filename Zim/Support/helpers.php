@@ -4,7 +4,6 @@ use Zim\Support\Arr;
 use Zim\Support\Str;
 use Zim\Support\Optional;
 use Zim\Support\Collection;
-use Illuminate\Contracts\Support\Htmlable;
 use Zim\Support\HigherOrderTapProxy;
 
 if (! function_exists('append_config')) {
@@ -138,7 +137,7 @@ if (! function_exists('array_forget')) {
      */
     function array_forget(&$array, $keys)
     {
-        return Arr::forget($array, $keys);
+        Arr::forget($array, $keys);
     }
 }
 
