@@ -119,7 +119,7 @@ trait RouteRequest
 
             $this->dispatch(Event::ROUTE, ['request' => $request]);
 
-            $routeInfo = $this->router->match($request->getPathInfo());
+            $routeInfo = $this->router->match($request->getPathInfo(), $request->getMethod());
 
             $this->dispatch(new RequestEvent($request, $routeInfo));
             $actionReturn = $this->callControllerAction($routeInfo);

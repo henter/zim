@@ -8,10 +8,6 @@
 
 namespace Zim\Routing;
 
-
-use Symfony\Component\Routing\Matcher\UrlMatcher;
-use Symfony\Component\Routing\RequestContext;
-use Symfony\Component\Routing\RouteCollection;
 use Zim\App;
 use Zim\Http\Exception\NotFoundException;
 
@@ -23,7 +19,7 @@ class Router
     protected $routes;
 
     /**
-     * @var UrlMatcher
+     * @var Matcher
      */
     protected $matcher;
 
@@ -48,7 +44,7 @@ class Router
     public function __construct()
     {
         $this->routes = self::loadRoutes();
-        $this->matcher = new UrlMatcher($this->routes, new RequestContext('/'));
+        $this->matcher = new Matcher($this->routes);
     }
 
     /**

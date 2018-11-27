@@ -223,16 +223,6 @@ class FlattenException
         return $this->trace;
     }
 
-    /**
-     * @deprecated since 4.1, use {@see setTraceFromThrowable()} instead.
-     */
-    public function setTraceFromException(\Exception $exception)
-    {
-        @trigger_error(sprintf('The "%s()" method is deprecated since Symfony 4.1, use "setTraceFromThrowable()" instead.', __METHOD__), E_USER_DEPRECATED);
-
-        $this->setTraceFromThrowable($exception);
-    }
-
     public function setTraceFromThrowable(\Throwable $throwable)
     {
         return $this->setTrace($throwable->getTrace(), $throwable->getFile(), $throwable->getLine());
