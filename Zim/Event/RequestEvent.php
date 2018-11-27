@@ -15,10 +15,12 @@ class RequestEvent
 {
 
     public $request;
+    public $routeInfo;
 
-    public function __construct(Request $request = null)
+    public function __construct(Request $request = null, $routeInfo = [])
     {
         $this->request = $request;
+        $this->routeInfo = $routeInfo;
     }
 
 }

@@ -9,6 +9,8 @@ namespace Zim;
 
 use Zim\Config\ConfigInterface;
 use Zim\Container\Container;
+use Zim\Service\LogService;
+use Zim\Service\Service;
 use Zim\Debug\ErrorHandler;
 use Zim\Debug\ExceptionHandler;
 use Zim\Event\Dispatcher;
@@ -17,6 +19,10 @@ use Zim\Traits\AppHelper;
 use Zim\Traits\RouteRequest;
 use Zim\Config\Config;
 
+/**
+ * Class App
+ * @package Zim
+ */
 class App extends Container
 {
     const VERSION = 'Zim (1.0.0)';
@@ -32,6 +38,20 @@ class App extends Container
     protected $loadedConfigurations = [];
 
     /**
+     * Indicates if the application has "booted".
+     *
+     * @var bool
+     */
+    protected $booted = false;
+
+    /**
+     * The loaded services.
+     *
+     * @var array
+     */
+    protected $loadedServices = [];
+
+    /**
      * The base path of the application installation.
      *
      * @var string
@@ -43,33 +63,20 @@ class App extends Container
      */
     protected $router;
 
-    public function __construct()
+    public function __construct($basePath = null)
     {
+        if ($basePath) {
+            $this->basePath = $basePath;
+        }
+
         $this->bootstrapContainer();
         $this->registerErrorHandling();
-
-        //config
-        $this->singleton('config', function () {
-            return new Config();
-        });
-        $this->configure('app');
-        $this->configure('routes');
+        $this->bootstrapConfig();
 
         //router after config
-        $this->router = new Router();
+        $this->bootstrapRouter();
 
-        //event
-        $this->singleton(Dispatcher::class);
-    }
-
-    /**
-     * Get the version number of the application.
-     *
-     * @return string
-     */
-    public function version()
-    {
-        return static::VERSION;
+        $this->registerServices();
     }
 
     /**
@@ -85,7 +92,101 @@ class App extends Container
         $this->instance(self::class, $this);
         $this->instance('env', $this->env());
 
+        $this->singleton('event',Dispatcher::class);
+
         $this->registerContainerAliases();
+    }
+
+    protected function bootstrapConfig()
+    {
+        $this->singleton('config', function () {
+            return new Config();
+        });
+        $this->configure('app');
+        $this->configure('routes');
+    }
+
+    protected function bootstrapRouter()
+    {
+        $this->router = new Router();
+    }
+
+    protected function registerServices()
+    {
+        //base services
+        $this->register(LogService::class);
+
+        //services from config
+        $services = self::config('app.services');
+        foreach ($services as $service) {
+            $this->register($service);
+        }
+    }
+
+    /**
+     * Get the version number of the application.
+     *
+     * @return string
+     */
+    public function version()
+    {
+        return static::VERSION;
+    }
+
+    /**
+     * Register a service provider with the application.
+     *
+     * @param  \Zim\Service\Service|string $service
+     */
+    public function register($service)
+    {
+        if (! $service instanceof Service) {
+            $service = new $service($this);
+        }
+
+        if (array_key_exists($name = get_class($service), $this->loadedServices)) {
+            return;
+        }
+
+        $this->loadedServices[$name] = $service;
+
+        if (method_exists($service, 'register')) {
+            $service->register();
+        }
+
+        if ($this->booted) {
+            $this->bootService($service);
+        }
+    }
+
+    /**
+     * Boots the registered providers, for every incoming request
+     */
+    public function boot()
+    {
+        if ($this->booted) {
+            return;
+        }
+
+        array_walk($this->loadedServices, function ($s) {
+            $this->bootService($s);
+        });
+
+        $this->booted = true;
+    }
+
+    /**
+     * Boot the given service provider.
+     *
+     * @param  \Zim\Service\Service $service
+     * @return mixed
+     */
+    protected function bootService(Service $service)
+    {
+        if (method_exists($service, 'boot')) {
+            return $this->call([$service, 'boot']);
+        }
+        return false;
     }
 
     /**

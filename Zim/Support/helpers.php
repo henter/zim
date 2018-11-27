@@ -881,20 +881,6 @@ if (! function_exists('str_limit')) {
     }
 }
 
-if (! function_exists('str_plural')) {
-    /**
-     * Get the plural form of an English word.
-     *
-     * @param  string  $value
-     * @param  int     $count
-     * @return string
-     */
-    function str_plural($value, $count = 2)
-    {
-        return Str::plural($value, $count);
-    }
-}
-
 if (! function_exists('str_random')) {
     /**
      * Generate a more truly "random" alpha-numeric string.
@@ -952,19 +938,6 @@ if (! function_exists('str_replace_last')) {
     function str_replace_last($search, $replace, $subject)
     {
         return Str::replaceLast($search, $replace, $subject);
-    }
-}
-
-if (! function_exists('str_singular')) {
-    /**
-     * Get the singular form of an English word.
-     *
-     * @param  string  $value
-     * @return string
-     */
-    function str_singular($value)
-    {
-        return Str::singular($value);
     }
 }
 

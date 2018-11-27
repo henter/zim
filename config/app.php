@@ -7,6 +7,9 @@
  */
 
 return [
-    'aa' => 'bb',
-    'cc' => 'dd',
+    'name' => 'Zim Demo',
+
+    'services' => [
+        \App\Service\Demo::class,
+    ],
 ];

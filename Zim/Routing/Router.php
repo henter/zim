@@ -36,7 +36,7 @@ class Router
     {
         $routes = new RouteCollection();
 
-        $configRoutes = App::getInstance()->make('config')->get('routes');
+        $configRoutes = App::config('routes');
         foreach ($configRoutes as list($pattern, $to)) {
             list($controller, $action) = explode('@', $to);
             $routes->add($pattern, new Route($pattern, ['_controller' => 'App\\Controller\\'.$controller.'Controller', '_action' => $action.'Action']));

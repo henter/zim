@@ -14,14 +14,36 @@ use Zim\Event\Dispatcher;
 trait AppHelper
 {
     /**
+     * @return Dispatcher
+     */
+    public function getEvent()
+    {
+        return $this->make('event');
+    }
+
+    /**
+     * TODO, with static dispatch function
+     *
      * @param $event
      * @param array $payload
      * @param bool $halt
      * @return mixed
      */
-    public static function dispatch($event, $payload = [], $halt = false)
+    public function dispatch($event, $payload = [], $halt = false)
     {
-        return self::app(Dispatcher::class)->dispatch($event, $payload, $halt);
+        return $this->getEvent()->dispatch($event, $payload, $halt);
+    }
+
+    /**
+     * Register an event listener with the dispatcher.
+     *
+     * @param  string|array  $events
+     * @param  mixed  $listener
+     * @return void
+     */
+    public function listen($events, $listener)
+    {
+        $this->getEvent()->listen($events, $listener);
     }
 
     /**

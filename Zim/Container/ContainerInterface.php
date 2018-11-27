@@ -99,7 +99,7 @@ interface ContainerInterface
      * Define a contextual binding.
      *
      * @param  string|array  $concrete
-     * @return \Illuminate\Contracts\Container\ContextualBindingBuilder
+     * @return \Zim\Container\ContextualBindingBuilder
      */
     public function when($concrete);
 

@@ -13,6 +13,9 @@ class Event
     //uncaught exception
     const EXCEPTION = 'zim.exception';
 
+    //before route match
+    const ROUTE = 'zim.route';
+
     //before request dispatch
     const REQUEST = 'zim.request';
 

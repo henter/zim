@@ -26,11 +26,15 @@ trait RouteRequest
      */
     public function run($request = null)
     {
-        App::dispatch(new RequestEvent($request));
+        $request = $request ?: Request::createFromGlobals();
         $response = $this->handle($request);
-        App::dispatch(Event::RESPONSE);
         $response->send();
-        App::dispatch(Event::TERMINATE);
+        $this->terminate($request, $response);
+    }
+
+    public function terminate(Request $request, Response $response)
+    {
+        $this->dispatch(Event::TERMINATE);
     }
 
     /**
@@ -39,13 +43,11 @@ trait RouteRequest
      */
     protected function callControllerAction($routeInfo)
     {
-        $instance = new $routeInfo['_controller'];
-
-        if (!method_exists($instance, $routeInfo['_action'])) {
-            return '404 not found method';
+        $controller = $this->make($routeInfo['_controller']);
+        if (!method_exists($controller, $routeInfo['_action'])) {
+            throw new NotFoundException('method not found');
         }
-
-        return call_user_func_array([$instance, $routeInfo['_action']], ['xx']);
+        return $controller->{$routeInfo['_action']}();
     }
 
     /**
@@ -83,17 +85,17 @@ trait RouteRequest
 
         //try controller
         if (!$c = $this->guessAppController($c)) {
-            throw new NotFoundException('controller not found');
+            throw new NotFoundException('path not found');
         }
 
         /**
          * @var Controller $controller
          */
-        $controller = App::getInstance()->make('App\\Controller\\'.$c);
+        $controller = $this->make('App\\Controller\\'.$c);
 
         //try controller method ?
         if ($method = $controller->getMethod($a)) {
-            return call_user_func_array([$controller, $method], []);
+            return $controller->{$method}();
         }
 
         //try controller action class
@@ -102,7 +104,7 @@ trait RouteRequest
             throw new NotFoundException('action not found');
         }
 
-        return App::getInstance()->make($actionClass)->execute();
+        return $this->make($actionClass)->execute();
     }
 
     /**
@@ -110,14 +112,19 @@ trait RouteRequest
      * @return Response
      * @throws \Throwable
      */
-    public function handle(Request $request = null)
+    public function handle(Request $request)
     {
-        $request = $request ?: Request::createFromGlobals();
-
         try {
+            $this->boot();
+
+            $this->dispatch(Event::ROUTE, ['request' => $request]);
+
             $routeInfo = $this->router->match($request->getPathInfo());
+
+            $this->dispatch(new RequestEvent($request, $routeInfo));
             $actionReturn = $this->callControllerAction($routeInfo);
         } catch (NotFoundException $e) {
+            $this->dispatch(new RequestEvent($request));
             $actionReturn = $this->tryCallControllerAction($request);
         } catch (\Throwable $e) {
             //TODO, after replaced router
@@ -132,6 +139,8 @@ trait RouteRequest
         } else {
             throw new ResponseException('invalid response');
         }
+
+        $this->dispatch(Event::RESPONSE);
         return $response->prepare($request);
     }
 
