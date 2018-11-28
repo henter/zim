@@ -8,9 +8,9 @@
 
 namespace Zim\Http;
 
-use Zim\Http\Session\SessionInterface;
-
 /**
+ * no session, TODO
+ *
  * Request represents an HTTP request.
  *
  * The methods dealing with URL accept / return a raw path (% encoded):
@@ -25,14 +25,6 @@ use Zim\Http\Session\SessionInterface;
  */
 class Request
 {
-    const HEADER_FORWARDED = 0b00001; // When using RFC 7239
-    const HEADER_X_FORWARDED_FOR = 0b00010;
-    const HEADER_X_FORWARDED_HOST = 0b00100;
-    const HEADER_X_FORWARDED_PROTO = 0b01000;
-    const HEADER_X_FORWARDED_PORT = 0b10000;
-    const HEADER_X_FORWARDED_ALL = 0b11110; // All "X-Forwarded-*" headers
-    const HEADER_X_FORWARDED_AWS_ELB = 0b11010; // AWS ELB doesn't send X-Forwarded-Host
-
     const METHOD_HEAD = 'HEAD';
     const METHOD_GET = 'GET';
     const METHOD_POST = 'POST';
@@ -43,23 +35,6 @@ class Request
     const METHOD_OPTIONS = 'OPTIONS';
     const METHOD_TRACE = 'TRACE';
     const METHOD_CONNECT = 'CONNECT';
-
-    /**
-     * @var string[]
-     */
-    protected static $trustedProxies = array();
-
-    /**
-     * @var string[]
-     */
-    protected static $trustedHostPatterns = array();
-
-    /**
-     * @var string[]
-     */
-    protected static $trustedHosts = array();
-
-    protected static $httpMethodParameterOverride = false;
 
     /**
      * Custom parameters.
@@ -166,11 +141,6 @@ class Request
     protected $format;
 
     /**
-     * @var \Zim\Http\Session\SessionInterface
-     */
-    protected $session;
-
-    /**
      * @var string
      */
     protected $locale;
@@ -187,34 +157,7 @@ class Request
 
     protected static $requestFactory;
 
-    private $isHostValid = true;
-    private $isForwardedValid = true;
-
-    private static $trustedHeaderSet = -1;
-
-    private static $forwardedParams = array(
-        self::HEADER_X_FORWARDED_FOR => 'for',
-        self::HEADER_X_FORWARDED_HOST => 'host',
-        self::HEADER_X_FORWARDED_PROTO => 'proto',
-        self::HEADER_X_FORWARDED_PORT => 'host',
-    );
-
-    /**
-     * Names for headers that can be trusted when
-     * using trusted proxies.
-     *
-     * The FORWARDED header is the standard as of rfc7239.
-     *
-     * The other headers are non-standard, but widely used
-     * by popular reverse proxies (like Apache mod_proxy or Amazon EC2).
-     */
-    private static $trustedHeaders = array(
-        self::HEADER_FORWARDED => 'FORWARDED',
-        self::HEADER_X_FORWARDED_FOR => 'X_FORWARDED_FOR',
-        self::HEADER_X_FORWARDED_HOST => 'X_FORWARDED_HOST',
-        self::HEADER_X_FORWARDED_PROTO => 'X_FORWARDED_PROTO',
-        self::HEADER_X_FORWARDED_PORT => 'X_FORWARDED_PORT',
-    );
+    private static $forwardedHeaders = ['FORWARDED', 'X_FORWARDED_FOR', 'X_FORWARDED_HOST'];
 
     /**
      * @param array                $query      The GET parameters
@@ -230,6 +173,18 @@ class Request
         $this->initialize($query, $request, $attributes, $cookies, $files, $server, $content);
     }
 
+    /**
+     * @return string
+     */
+    public function getForwardedFor()
+    {
+        foreach (self::$forwardedHeaders as $key) {
+            if ($host = $this->headers->get($key)) {
+                return current($host);
+            }
+        }
+        return '';
+    }
     /**
      * Sets the parameters for this request.
      *
@@ -565,66 +520,6 @@ class Request
     }
 
     /**
-     * Gets the Session.
-     *
-     * @return SessionInterface|null The session
-     */
-    public function getSession()
-    {
-        $session = $this->session;
-        if (!$session instanceof SessionInterface && null !== $session) {
-            //TODO
-            $this->setSession($session = $session::create());
-        }
-
-        return $session;
-    }
-
-    /**
-     * Whether the request contains a Session which was started in one of the
-     * previous requests.
-     *
-     * @return bool
-     */
-    public function hasPreviousSession()
-    {
-        // the check for $this->session avoids malicious users trying to fake a session cookie with proper name
-        return $this->hasSession() && $this->cookies->has($this->getSession()->getName());
-    }
-
-    /**
-     * Whether the request contains a Session object.
-     *
-     * This method does not give any information about the state of the session object,
-     * like whether the session is started or not. It is just a way to check if this Request
-     * is associated with a Session instance.
-     *
-     * @return bool true when the Request contains a Session object, false otherwise
-     */
-    public function hasSession()
-    {
-        return null !== $this->session;
-    }
-
-    /**
-     * Sets the Session.
-     *
-     * @param SessionInterface $session The Session
-     */
-    public function setSession(SessionInterface $session)
-    {
-        $this->session = $session;
-    }
-
-    /**
-     * @internal
-     */
-    public function setSessionFactory(callable $factory)
-    {
-        $this->session = $factory;
-    }
-
-    /**
      * Returns the client IP address.
      *
      * This method can read the client IP address from the "X-Forwarded-For" header
@@ -736,8 +631,8 @@ class Request
      */
     public function getPort()
     {
-        if ($host = $this->headers->get('X_FORWARDED_FOR')) {
-            $host = $host[0];
+        if ($host = $this->getForwardedFor()) {
+            //nothing
         } elseif (!$host = $this->headers->get('HOST')) {
             return $this->server->get('SERVER_PORT');
         }
@@ -857,8 +752,8 @@ class Request
      */
     public function getHost()
     {
-        if ($host = $this->headers->get('X_FORWARDED_FOR')) {
-            $host = $host[0];
+        if ($host = $this->getForwardedFor()) {
+            //nothing
         } elseif (!$host = $this->headers->get('HOST')) {
             if (!$host = $this->server->get('SERVER_NAME')) {
                 $host = $this->server->get('SERVER_ADDR', '');
