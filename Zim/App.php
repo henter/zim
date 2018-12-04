@@ -39,7 +39,7 @@ class App extends Container
      *
      * @var array
      */
-    protected $loadedConfigurations = [];
+    protected $loadedConfigs = [];
 
     /**
      * Indicates if the application has "booted".
@@ -92,9 +92,7 @@ class App extends Container
         static::setInstance($this);
 
         $this->instance('app', $this);
-        $this->instance(self::class, $this);
         $this->instance('env', $this->env());
-
         $this->singleton('event',Dispatcher::class);
 
         $this->registerContainerAliases();
@@ -226,13 +224,13 @@ class App extends Container
      */
     public function configure($name)
     {
-        if (isset($this->loadedConfigurations[$name])) {
+        if (isset($this->loadedConfigs[$name])) {
             return;
         }
 
-        $this->loadedConfigurations[$name] = true;
+        $this->loadedConfigs[$name] = true;
 
-        if ($path = $this->getConfigurationPath($name)) {
+        if ($path = $this->getConfigPath($name)) {
             $this->make('config')->set($name, require $path);
         }
     }
@@ -245,7 +243,7 @@ class App extends Container
      * @param  string|null  $name
      * @return string
      */
-    public function getConfigurationPath($name = null)
+    public function getConfigPath($name = null)
     {
         if (! $name) {
             $appConfigDir = $this->basePath('config').'/';

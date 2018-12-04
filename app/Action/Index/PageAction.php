@@ -15,7 +15,7 @@ class PageAction extends \Zim\Routing\Action
 
     public function execute()
     {
-        var_dump($this->app(ConfigInterface::class)->get('app.routes'));
+        var_dump($this->app(ConfigInterface::class)->get('routes'));
         return 'page response test';
     }
 }

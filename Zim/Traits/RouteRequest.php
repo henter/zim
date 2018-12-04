@@ -27,7 +27,6 @@ trait RouteRequest
     public function run($request = null)
     {
         $request = $request ?: Request::createFromGlobals();
-        $this->instance('request', $request);
         $response = $this->handle($request);
         $response->send();
         $this->terminate($request, $response);
@@ -118,11 +117,8 @@ trait RouteRequest
         try {
             $this->boot();
 
-            //TODO, return modified request object
-            $this->dispatch(Event::ROUTE, ['request' => $request]);
-
             $this->instance('request', $request);
-
+            $this->dispatch(Event::ROUTE, ['request' => $request]);
             $routeInfo = $this->router->match($request->getPathInfo(), $request->getMethod());
 
             $this->dispatch(new RequestEvent($request, $routeInfo));
