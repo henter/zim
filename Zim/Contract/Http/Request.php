@@ -8,7 +8,7 @@
 
 namespace Zim\Http;
 
-interface RequestInterface
+interface Request
 {
 
 }

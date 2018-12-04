@@ -172,7 +172,7 @@ class Response
     /**
      * @throws \InvalidArgumentException When the HTTP status code is not valid
      */
-    public function __construct($content = '', int $status = 200, array $headers = array())
+    public function __construct($content = '', int $status = 200, array $headers = [])
     {
         $this->headers = new ResponseHeaderBag($headers);
         $this->setContent($content);
@@ -194,7 +194,7 @@ class Response
      *
      * @return static
      */
-    public static function create($content = '', $status = 200, $headers = array())
+    public static function create($content = '', $status = 200, $headers = [])
     {
         return new static($content, $status, $headers);
     }
@@ -287,8 +287,6 @@ class Response
             $this->headers->set('expires', -1);
         }
 
-        $this->ensureIEOverSSLCompatibility($request);
-
         return $this;
     }
 
@@ -305,15 +303,10 @@ class Response
         }
 
         // headers
-        foreach ($this->headers->allPreserveCaseWithoutCookies() as $name => $values) {
+        foreach ($this->headers->allPreserveCase() as $name => $values) {
             foreach ($values as $value) {
                 header($name.': '.$value, false, $this->statusCode);
             }
-        }
-
-        // cookies
-        foreach ($this->headers->getCookies() as $cookie) {
-            header('Set-Cookie: '.$cookie->getName().strstr($cookie, '='), false, $this->statusCode);
         }
 
         // status
@@ -613,19 +606,5 @@ class Response
         }
     }
 
-    /**
-     * Checks if we need to remove Cache-Control for SSL encrypted downloads when using IE < 9.
-     *
-     * @see http://support.microsoft.com/kb/323308
-     *
-     * @final
-     */
-    protected function ensureIEOverSSLCompatibility(Request $request)
-    {
-        if (false !== stripos($this->headers->get('Content-Disposition'), 'attachment') && 1 == preg_match('/MSIE (.*?);/i', $request->server->get('HTTP_USER_AGENT'), $match) && true === $request->isSecure()) {
-            if ((int) preg_replace('/(MSIE )(.*?);/', '$2', $match[0]) < 9) {
-                $this->headers->remove('Cache-Control');
-            }
-        }
-    }
+
 }

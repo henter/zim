@@ -18,7 +18,7 @@ namespace Zim\Http\Exception;
  */
 class MethodNotAllowedException extends \RuntimeException
 {
-    protected $allowedMethods = array();
+    protected $allowedMethods = [];
 
     public function __construct(array $allowedMethods, string $message = null, int $code = 0, \Exception $previous = null)
     {

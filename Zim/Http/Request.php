@@ -9,18 +9,7 @@
 namespace Zim\Http;
 
 /**
- * no session, TODO
- *
  * Request represents an HTTP request.
- *
- * The methods dealing with URL accept / return a raw path (% encoded):
- *   * getBasePath
- *   * getBaseUrl
- *   * getPathInfo
- *   * getRequestUri
- *   * getUri
- *   * getUriForPath
- *
  * @author Fabien Potencier <fabien@symfony.com>
  */
 class Request
@@ -65,20 +54,6 @@ class Request
     public $server;
 
     /**
-     * Uploaded files ($_FILES).
-     *
-     * @var \Zim\Http\FileBag
-     */
-    public $files;
-
-    /**
-     * Cookies ($_COOKIE).
-     *
-     * @var \Zim\Http\ParameterBag
-     */
-    public $cookies;
-
-    /**
      * Headers (taken from the $_SERVER).
      *
      * @var \Zim\Http\HeaderBag
@@ -89,26 +64,6 @@ class Request
      * @var string|resource|false|null
      */
     protected $content;
-
-    /**
-     * @var array
-     */
-    protected $languages;
-
-    /**
-     * @var array
-     */
-    protected $charsets;
-
-    /**
-     * @var array
-     */
-    protected $encodings;
-
-    /**
-     * @var array
-     */
-    protected $acceptableContentTypes;
 
     /**
      * @var string
@@ -123,39 +78,12 @@ class Request
     /**
      * @var string
      */
-    protected $baseUrl;
-
-    /**
-     * @var string
-     */
-    protected $basePath;
-
-    /**
-     * @var string
-     */
     protected $method;
-
-    /**
-     * @var string
-     */
-    protected $format;
-
-    /**
-     * @var string
-     */
-    protected $locale;
-
-    /**
-     * @var string
-     */
-    protected $defaultLocale = 'en';
 
     /**
      * @var array
      */
     protected static $formats;
-
-    protected static $requestFactory;
 
     private static $forwardedHeaders = ['FORWARDED', 'X_FORWARDED_FOR', 'X_FORWARDED_HOST'];
 
@@ -163,14 +91,12 @@ class Request
      * @param array                $query      The GET parameters
      * @param array                $request    The POST parameters
      * @param array                $attributes The request attributes (parameters parsed from the PATH_INFO, ...)
-     * @param array                $cookies    The COOKIE parameters
-     * @param array                $files      The FILES parameters
      * @param array                $server     The SERVER parameters
      * @param string|resource|null $content    The raw body data
      */
-    public function __construct(array $query = array(), array $request = array(), array $attributes = array(), array $cookies = array(), array $files = array(), array $server = array(), $content = null)
+    public function __construct(array $query = [], array $request = [], array $attributes = [], array $server = [], $content = null)
     {
-        $this->initialize($query, $request, $attributes, $cookies, $files, $server, $content);
+        $this->initialize($query, $request, $attributes, $server, $content);
     }
 
     /**
@@ -193,32 +119,21 @@ class Request
      * @param array                $query      The GET parameters
      * @param array                $request    The POST parameters
      * @param array                $attributes The request attributes (parameters parsed from the PATH_INFO, ...)
-     * @param array                $cookies    The COOKIE parameters
-     * @param array                $files      The FILES parameters
      * @param array                $server     The SERVER parameters
      * @param string|resource|null $content    The raw body data
      */
-    public function initialize(array $query = array(), array $request = array(), array $attributes = array(), array $cookies = array(), array $files = array(), array $server = array(), $content = null)
+    public function initialize(array $query = [], array $request = [], array $attributes = [], array $server = [], $content = null)
     {
         $this->request = new ParameterBag($request);
         $this->query = new ParameterBag($query);
         $this->attributes = new ParameterBag($attributes);
-        $this->cookies = new ParameterBag($cookies);
-        $this->files = new FileBag($files);
         $this->server = new ServerBag($server);
         $this->headers = new HeaderBag($this->server->getHeaders());
 
         $this->content = $content;
-        $this->languages = null;
-        $this->charsets = null;
-        $this->encodings = null;
-        $this->acceptableContentTypes = null;
         $this->pathInfo = null;
         $this->requestUri = null;
-        $this->baseUrl = null;
-        $this->basePath = null;
         $this->method = null;
-        $this->format = null;
     }
 
     /**
@@ -228,7 +143,7 @@ class Request
      */
     public static function createFromGlobals()
     {
-        $request = self::createRequestFromFactory($_GET, $_POST, array(), $_COOKIE, $_FILES, $_SERVER);
+        $request = new static($_GET, $_POST, [], $_SERVER);
 
         if (0 === strpos($request->headers->get('CONTENT_TYPE'), 'application/x-www-form-urlencoded')
             && \in_array(strtoupper($request->server->get('REQUEST_METHOD', 'GET')), array('PUT', 'DELETE', 'PATCH'))
@@ -240,182 +155,77 @@ class Request
         return $request;
     }
 
-    /**
-     * Creates a Request based on a given URI and configuration.
-     *
-     * The information contained in the URI always take precedence
-     * over the other information (server and parameters).
-     *
-     * @param string               $uri        The URI
-     * @param string               $method     The HTTP method
-     * @param array                $parameters The query (GET) or request (POST) parameters
-     * @param array                $cookies    The request cookies ($_COOKIE)
-     * @param array                $files      The request files ($_FILES)
-     * @param array                $server     The server parameters ($_SERVER)
-     * @param string|resource|null $content    The raw body data
-     *
-     * @return static
-     */
-    public static function create($uri, $method = 'GET', $parameters = array(), $cookies = array(), $files = array(), $server = array(), $content = null)
+    private static function createRequestFromFactory(array $query = [], array $request = [], array $attributes = [], array $server = [], $content = null)
     {
-        $server = array_replace(array(
-            'SERVER_NAME' => 'localhost',
-            'SERVER_PORT' => 80,
-            'HTTP_HOST' => 'localhost',
-            'HTTP_USER_AGENT' => 'Symfony',
-            'HTTP_ACCEPT' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'HTTP_ACCEPT_LANGUAGE' => 'en-us,en;q=0.5',
-            'HTTP_ACCEPT_CHARSET' => 'ISO-8859-1,utf-8;q=0.7,*;q=0.7',
-            'REMOTE_ADDR' => '127.0.0.1',
-            'SCRIPT_NAME' => '',
-            'SCRIPT_FILENAME' => '',
-            'SERVER_PROTOCOL' => 'HTTP/1.1',
-            'REQUEST_TIME' => time(),
-        ), $server);
-
-        $server['PATH_INFO'] = '';
-        $server['REQUEST_METHOD'] = strtoupper($method);
-
-        $components = parse_url($uri);
-        if (isset($components['host'])) {
-            $server['SERVER_NAME'] = $components['host'];
-            $server['HTTP_HOST'] = $components['host'];
-        }
-
-        if (isset($components['scheme'])) {
-            if ('https' === $components['scheme']) {
-                $server['HTTPS'] = 'on';
-                $server['SERVER_PORT'] = 443;
-            } else {
-                unset($server['HTTPS']);
-                $server['SERVER_PORT'] = 80;
-            }
-        }
-
-        if (isset($components['port'])) {
-            $server['SERVER_PORT'] = $components['port'];
-            $server['HTTP_HOST'] .= ':'.$components['port'];
-        }
-
-        if (isset($components['user'])) {
-            $server['PHP_AUTH_USER'] = $components['user'];
-        }
-
-        if (isset($components['pass'])) {
-            $server['PHP_AUTH_PW'] = $components['pass'];
-        }
-
-        if (!isset($components['path'])) {
-            $components['path'] = '/';
-        }
-
-        switch (strtoupper($method)) {
-            case 'POST':
-            case 'PUT':
-            case 'DELETE':
-                if (!isset($server['CONTENT_TYPE'])) {
-                    $server['CONTENT_TYPE'] = 'application/x-www-form-urlencoded';
-                }
-            // no break
-            case 'PATCH':
-                $request = $parameters;
-                $query = array();
-                break;
-            default:
-                $request = array();
-                $query = $parameters;
-                break;
-        }
-
-        $queryString = '';
-        if (isset($components['query'])) {
-            parse_str(html_entity_decode($components['query']), $qs);
-
-            if ($query) {
-                $query = array_replace($qs, $query);
-                $queryString = http_build_query($query, '', '&');
-            } else {
-                $query = $qs;
-                $queryString = $components['query'];
-            }
-        } elseif ($query) {
-            $queryString = http_build_query($query, '', '&');
-        }
-
-        $server['REQUEST_URI'] = $components['path'].('' !== $queryString ? '?'.$queryString : '');
-        $server['QUERY_STRING'] = $queryString;
-
-        return self::createRequestFromFactory($query, $request, array(), $cookies, $files, $server, $content);
     }
 
     /**
-     * Sets a callable able to create a Request instance.
+     * Gets the request format.
      *
-     * This is mainly useful when you need to override the Request class
-     * to keep BC with an existing system. It should not be used for any
-     * other purpose.
+     * Here is the process to determine the format:
      *
-     * @param callable|null $callable A PHP callable
+     *  * _format request attribute
+     *  * $default
+     *
+     * @param string|null $default The default format
+     *
+     * @return string The request format
      */
-    public static function setFactory($callable)
+    public function getRequestFormat($default = 'html')
     {
-        self::$requestFactory = $callable;
+        return $this->attributes->get('_format', $default);
     }
 
     /**
-     * Clones a request and overrides some of its parameters.
+     * Gets the mime type associated with the format.
      *
-     * @param array $query      The GET parameters
-     * @param array $request    The POST parameters
-     * @param array $attributes The request attributes (parameters parsed from the PATH_INFO, ...)
-     * @param array $cookies    The COOKIE parameters
-     * @param array $files      The FILES parameters
-     * @param array $server     The SERVER parameters
+     * @param string $format The format
      *
-     * @return static
+     * @return string|null The associated mime type (null if not found)
      */
-    public function duplicate(array $query = null, array $request = null, array $attributes = null, array $cookies = null, array $files = null, array $server = null)
+    public function getMimeType($format)
     {
-        $dup = clone $this;
-        if (null !== $query) {
-            $dup->query = new ParameterBag($query);
-        }
-        if (null !== $request) {
-            $dup->request = new ParameterBag($request);
-        }
-        if (null !== $attributes) {
-            $dup->attributes = new ParameterBag($attributes);
-        }
-        if (null !== $cookies) {
-            $dup->cookies = new ParameterBag($cookies);
-        }
-        if (null !== $files) {
-            $dup->files = new FileBag($files);
-        }
-        if (null !== $server) {
-            $dup->server = new ServerBag($server);
-            $dup->headers = new HeaderBag($dup->server->getHeaders());
-        }
-        $dup->languages = null;
-        $dup->charsets = null;
-        $dup->encodings = null;
-        $dup->acceptableContentTypes = null;
-        $dup->pathInfo = null;
-        $dup->requestUri = null;
-        $dup->baseUrl = null;
-        $dup->basePath = null;
-        $dup->method = null;
-        $dup->format = null;
-
-        if (!$dup->get('_format') && $this->get('_format')) {
-            $dup->attributes->set('_format', $this->get('_format'));
+        if (null === static::$formats) {
+            static::initializeFormats();
         }
 
-        if (!$dup->getRequestFormat(null)) {
-            $dup->setRequestFormat($this->getRequestFormat(null));
+        return isset(static::$formats[$format]) ? static::$formats[$format][0] : null;
+    }
+
+    /**
+     * Gets the mime types associated with the format.
+     *
+     * @param string $format The format
+     *
+     * @return array The associated mime types
+     */
+    public static function getMimeTypes($format)
+    {
+        if (null === static::$formats) {
+            static::initializeFormats();
         }
 
-        return $dup;
+        return isset(static::$formats[$format]) ? static::$formats[$format] : [];
+    }
+
+    /**
+     * Initializes HTTP request formats.
+     */
+    protected static function initializeFormats()
+    {
+        static::$formats = array(
+            'html' => array('text/html', 'application/xhtml+xml'),
+            'txt' => array('text/plain'),
+            'js' => array('application/javascript', 'application/x-javascript', 'text/javascript'),
+            'css' => array('text/css'),
+            'json' => array('application/json', 'application/x-json'),
+            'jsonld' => array('application/ld+json'),
+            'xml' => array('text/xml', 'application/xml', 'application/x-xml'),
+            'rdf' => array('application/rdf+xml'),
+            'atom' => array('application/atom+xml'),
+            'rss' => array('application/rss+xml'),
+            'form' => array('application/x-www-form-urlencoded'),
+        );
     }
 
     /**
@@ -429,8 +239,6 @@ class Request
         $this->query = clone $this->query;
         $this->request = clone $this->request;
         $this->attributes = clone $this->attributes;
-        $this->cookies = clone $this->cookies;
-        $this->files = clone $this->files;
         $this->server = clone $this->server;
         $this->headers = clone $this->headers;
     }
@@ -448,21 +256,9 @@ class Request
             return trigger_error($e, E_USER_ERROR);
         }
 
-        $cookieHeader = '';
-        $cookies = array();
-
-        foreach ($this->cookies as $k => $v) {
-            $cookies[] = $k.'='.$v;
-        }
-
-        if (!empty($cookies)) {
-            $cookieHeader = 'Cookie: '.implode('; ', $cookies)."\r\n";
-        }
-
         return
             sprintf('%s %s %s', $this->getMethod(), $this->getRequestUri(), $this->server->get('SERVER_PROTOCOL'))."\r\n".
             $this->headers.
-            $cookieHeader."\r\n".
             $content;
     }
 
@@ -520,26 +316,6 @@ class Request
     }
 
     /**
-     * Returns the client IP address.
-     *
-     * This method can read the client IP address from the "X-Forwarded-For" header
-     * when trusted proxies were set via "setTrustedProxies()". The "X-Forwarded-For"
-     * header value is a comma+space separated list of IP addresses, the left-most
-     * being the original client, and each successive proxy that passed the request
-     * adding the IP address where it received the request from.
-     *
-     * @return string|null The client IP address
-     *
-     * @see getClientIps()
-     * @see http://en.wikipedia.org/wiki/X-Forwarded-For
-     */
-    public function getClientIp()
-    {
-        //TODO
-        return $this->server->get('REMOTE_ADDR');
-    }
-
-    /**
      * Returns the path being requested relative to the executed script.
      *
      * The path info always starts with a /.
@@ -560,46 +336,6 @@ class Request
         }
 
         return $this->pathInfo;
-    }
-
-    /**
-     * Returns the root path from which this request is executed.
-     *
-     * Suppose that an index.php file instantiates this request object:
-     *
-     *  * http://localhost/index.php         returns an empty string
-     *  * http://localhost/index.php/page    returns an empty string
-     *  * http://localhost/web/index.php     returns '/web'
-     *  * http://localhost/we%20b/index.php  returns '/we%20b'
-     *
-     * @return string The raw path (i.e. not urldecoded)
-     */
-    public function getBasePath()
-    {
-        if (null === $this->basePath) {
-            $this->basePath = $this->prepareBasePath();
-        }
-
-        return $this->basePath;
-    }
-
-    /**
-     * Returns the root URL from which this request is executed.
-     *
-     * The base URL never ends with a /.
-     *
-     * This is similar to getBasePath(), except that it also includes the
-     * script filename (e.g. index.php) if one exists.
-     *
-     * @return string The raw URL (i.e. not urldecoded)
-     */
-    public function getBaseUrl()
-    {
-        if (null === $this->baseUrl) {
-            $this->baseUrl = $this->prepareBaseUrl();
-        }
-
-        return $this->baseUrl;
     }
 
     /**
@@ -709,19 +445,7 @@ class Request
             $qs = '?'.$qs;
         }
 
-        return $this->getSchemeAndHttpHost().$this->getBaseUrl().$this->getPathInfo().$qs;
-    }
-
-    /**
-     * Generates a normalized URI for the given path.
-     *
-     * @param string $path A path to use instead of the current one
-     *
-     * @return string The normalized URI for the path
-     */
-    public function getUriForPath($path)
-    {
-        return $this->getSchemeAndHttpHost().$this->getBaseUrl().$path;
+        return $this->getSchemeAndHttpHost().$this->getPathInfo().$qs;
     }
 
     /**
@@ -804,123 +528,6 @@ class Request
     }
 
     /**
-     * Gets the mime type associated with the format.
-     *
-     * @param string $format The format
-     *
-     * @return string|null The associated mime type (null if not found)
-     */
-    public function getMimeType($format)
-    {
-        if (null === static::$formats) {
-            static::initializeFormats();
-        }
-
-        return isset(static::$formats[$format]) ? static::$formats[$format][0] : null;
-    }
-
-    /**
-     * Gets the mime types associated with the format.
-     *
-     * @param string $format The format
-     *
-     * @return array The associated mime types
-     */
-    public static function getMimeTypes($format)
-    {
-        if (null === static::$formats) {
-            static::initializeFormats();
-        }
-
-        return isset(static::$formats[$format]) ? static::$formats[$format] : array();
-    }
-
-    /**
-     * Gets the format associated with the mime type.
-     *
-     * @param string $mimeType The associated mime type
-     *
-     * @return string|null The format (null if not found)
-     */
-    public function getFormat($mimeType)
-    {
-        $canonicalMimeType = null;
-        if (false !== $pos = strpos($mimeType, ';')) {
-            $canonicalMimeType = substr($mimeType, 0, $pos);
-        }
-
-        if (null === static::$formats) {
-            static::initializeFormats();
-        }
-
-        foreach (static::$formats as $format => $mimeTypes) {
-            if (\in_array($mimeType, (array) $mimeTypes)) {
-                return $format;
-            }
-            if (null !== $canonicalMimeType && \in_array($canonicalMimeType, (array) $mimeTypes)) {
-                return $format;
-            }
-        }
-    }
-
-    /**
-     * Associates a format with mime types.
-     *
-     * @param string       $format    The format
-     * @param string|array $mimeTypes The associated mime types (the preferred one must be the first as it will be used as the content type)
-     */
-    public function setFormat($format, $mimeTypes)
-    {
-        if (null === static::$formats) {
-            static::initializeFormats();
-        }
-
-        static::$formats[$format] = \is_array($mimeTypes) ? $mimeTypes : array($mimeTypes);
-    }
-
-    /**
-     * Gets the request format.
-     *
-     * Here is the process to determine the format:
-     *
-     *  * format defined by the user (with setRequestFormat())
-     *  * _format request attribute
-     *  * $default
-     *
-     * @param string|null $default The default format
-     *
-     * @return string The request format
-     */
-    public function getRequestFormat($default = 'html')
-    {
-        if (null === $this->format) {
-            $this->format = $this->attributes->get('_format');
-        }
-
-        return null === $this->format ? $default : $this->format;
-    }
-
-    /**
-     * Sets the request format.
-     *
-     * @param string $format The request format
-     */
-    public function setRequestFormat($format)
-    {
-        $this->format = $format;
-    }
-
-    /**
-     * Gets the format associated with the request.
-     *
-     * @return string|null The format (null if no content type is present)
-     */
-    public function getContentType()
-    {
-        return $this->getFormat($this->headers->get('CONTENT_TYPE'));
-    }
-
-    /**
      * Checks if the request method is of specified type.
      *
      * @param string $method Uppercase request method (GET, POST etc)
@@ -979,139 +586,19 @@ class Request
         return $this->content;
     }
 
-
-    /*
-     * The following methods are derived from code of the Zend Framework (1.10dev - 2010-01-24)
-     *
-     * Code subject to the new BSD license (http://framework.zend.com/license/new-bsd).
-     *
-     * Copyright (c) 2005-2010 Zend Technologies USA Inc. (http://www.zend.com)
-     */
-
-    protected function prepareRequestUri()
-    {
-        $requestUri = '';
-
-        if ('1' == $this->server->get('IIS_WasUrlRewritten') && '' != $this->server->get('UNENCODED_URL')) {
-            // IIS7 with URL Rewrite: make sure we get the unencoded URL (double slash problem)
-            $requestUri = $this->server->get('UNENCODED_URL');
-            $this->server->remove('UNENCODED_URL');
-            $this->server->remove('IIS_WasUrlRewritten');
-        } elseif ($this->server->has('REQUEST_URI')) {
-            $requestUri = $this->server->get('REQUEST_URI');
-            // HTTP proxy reqs setup request URI with scheme and host [and port] + the URL path, only use URL path
-            $schemeAndHttpHost = $this->getSchemeAndHttpHost();
-            if (0 === strpos($requestUri, $schemeAndHttpHost)) {
-                $requestUri = substr($requestUri, \strlen($schemeAndHttpHost));
-            }
-        } elseif ($this->server->has('ORIG_PATH_INFO')) {
-            // IIS 5.0, PHP as CGI
-            $requestUri = $this->server->get('ORIG_PATH_INFO');
-            if ('' != $this->server->get('QUERY_STRING')) {
-                $requestUri .= '?'.$this->server->get('QUERY_STRING');
-            }
-            $this->server->remove('ORIG_PATH_INFO');
-        }
-
-        // normalize the request URI to ease creating sub-requests from this request
-        $this->server->set('REQUEST_URI', $requestUri);
-
-        return $requestUri;
-    }
-
     /**
-     * Prepares the base URL.
-     *
      * @return string
      */
-    protected function prepareBaseUrl()
+    protected function prepareRequestUri()
     {
-        $filename = basename($this->server->get('SCRIPT_FILENAME'));
-
-        if (basename($this->server->get('SCRIPT_NAME')) === $filename) {
-            $baseUrl = $this->server->get('SCRIPT_NAME');
-        } elseif (basename($this->server->get('PHP_SELF')) === $filename) {
-            $baseUrl = $this->server->get('PHP_SELF');
-        } elseif (basename($this->server->get('ORIG_SCRIPT_NAME')) === $filename) {
-            $baseUrl = $this->server->get('ORIG_SCRIPT_NAME'); // 1and1 shared hosting compatibility
-        } else {
-            // Backtrack up the script_filename to find the portion matching
-            // php_self
-            $path = $this->server->get('PHP_SELF', '');
-            $file = $this->server->get('SCRIPT_FILENAME', '');
-            $segs = explode('/', trim($file, '/'));
-            $segs = array_reverse($segs);
-            $index = 0;
-            $last = \count($segs);
-            $baseUrl = '';
-            do {
-                $seg = $segs[$index];
-                $baseUrl = '/'.$seg.$baseUrl;
-                ++$index;
-            } while ($last > $index && (false !== $pos = strpos($path, $baseUrl)) && 0 != $pos);
+        $requestUri = $this->server->get('REQUEST_URI');
+        // HTTP proxy reqs setup request URI with scheme and host [and port] + the URL path, only use URL path
+        $schemeAndHttpHost = $this->getSchemeAndHttpHost();
+        if (0 === strpos($requestUri, $schemeAndHttpHost)) {
+            $requestUri = substr($requestUri, \strlen($schemeAndHttpHost));
         }
 
-        // Does the baseUrl have anything in common with the request_uri?
-        $requestUri = $this->getRequestUri();
-        if ('' !== $requestUri && '/' !== $requestUri[0]) {
-            $requestUri = '/'.$requestUri;
-        }
-
-        if ($baseUrl && false !== $prefix = $this->getUrlencodedPrefix($requestUri, $baseUrl)) {
-            // full $baseUrl matches
-            return $prefix;
-        }
-
-        if ($baseUrl && false !== $prefix = $this->getUrlencodedPrefix($requestUri, rtrim(\dirname($baseUrl), '/'.\DIRECTORY_SEPARATOR).'/')) {
-            // directory portion of $baseUrl matches
-            return rtrim($prefix, '/'.\DIRECTORY_SEPARATOR);
-        }
-
-        $truncatedRequestUri = $requestUri;
-        if (false !== $pos = strpos($requestUri, '?')) {
-            $truncatedRequestUri = substr($requestUri, 0, $pos);
-        }
-
-        $basename = basename($baseUrl);
-        if (empty($basename) || !strpos(rawurldecode($truncatedRequestUri), $basename)) {
-            // no match whatsoever; set it blank
-            return '';
-        }
-
-        // If using mod_rewrite or ISAPI_Rewrite strip the script filename
-        // out of baseUrl. $pos !== 0 makes sure it is not matching a value
-        // from PATH_INFO or QUERY_STRING
-        if (\strlen($requestUri) >= \strlen($baseUrl) && (false !== $pos = strpos($requestUri, $baseUrl)) && 0 !== $pos) {
-            $baseUrl = substr($requestUri, 0, $pos + \strlen($baseUrl));
-        }
-
-        return rtrim($baseUrl, '/'.\DIRECTORY_SEPARATOR);
-    }
-
-    /**
-     * Prepares the base path.
-     *
-     * @return string base path
-     */
-    protected function prepareBasePath()
-    {
-        $baseUrl = $this->getBaseUrl();
-        if (empty($baseUrl)) {
-            return '';
-        }
-
-        $filename = basename($this->server->get('SCRIPT_FILENAME'));
-        if (basename($baseUrl) === $filename) {
-            $basePath = \dirname($baseUrl);
-        } else {
-            $basePath = $baseUrl;
-        }
-
-        if ('\\' === \DIRECTORY_SEPARATOR) {
-            $basePath = str_replace('\\', '/', $basePath);
-        }
-
-        return rtrim($basePath, '/');
+        return $requestUri;
     }
 
     /**
@@ -1133,73 +620,7 @@ class Request
             $requestUri = '/'.$requestUri;
         }
 
-        if (null === ($baseUrl = $this->getBaseUrl())) {
-            return $requestUri;
-        }
-
-        $pathInfo = substr($requestUri, \strlen($baseUrl));
-        if (false === $pathInfo || '' === $pathInfo) {
-            // If substr() returns false then PATH_INFO is set to an empty string
-            return '/';
-        }
-
-        return (string) $pathInfo;
-    }
-
-    /**
-     * Initializes HTTP request formats.
-     */
-    protected static function initializeFormats()
-    {
-        static::$formats = array(
-            'html' => array('text/html', 'application/xhtml+xml'),
-            'txt' => array('text/plain'),
-            'js' => array('application/javascript', 'application/x-javascript', 'text/javascript'),
-            'css' => array('text/css'),
-            'json' => array('application/json', 'application/x-json'),
-            'jsonld' => array('application/ld+json'),
-            'xml' => array('text/xml', 'application/xml', 'application/x-xml'),
-            'rdf' => array('application/rdf+xml'),
-            'atom' => array('application/atom+xml'),
-            'rss' => array('application/rss+xml'),
-            'form' => array('application/x-www-form-urlencoded'),
-        );
-    }
-
-    /*
-     * Returns the prefix as encoded in the string when the string starts with
-     * the given prefix, false otherwise.
-     *
-     * @return string|false The prefix as it is encoded in $string, or false
-     */
-    private function getUrlencodedPrefix(string $string, string $prefix)
-    {
-        if (0 !== strpos(rawurldecode($string), $prefix)) {
-            return false;
-        }
-
-        $len = \strlen($prefix);
-
-        if (preg_match(sprintf('#^(%%[[:xdigit:]]{2}|.){%d}#', $len), $string, $match)) {
-            return $match[0];
-        }
-
-        return false;
-    }
-
-    private static function createRequestFromFactory(array $query = array(), array $request = array(), array $attributes = array(), array $cookies = array(), array $files = array(), array $server = array(), $content = null)
-    {
-        if (self::$requestFactory) {
-            $request = \call_user_func(self::$requestFactory, $query, $request, $attributes, $cookies, $files, $server, $content);
-
-            if (!$request instanceof self) {
-                throw new \LogicException('The Request factory must return an instance of Zim\Http\Request.');
-            }
-
-            return $request;
-        }
-
-        return new static($query, $request, $attributes, $cookies, $files, $server, $content);
+        return $requestUri;
     }
 
 }

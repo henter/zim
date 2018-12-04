@@ -68,13 +68,6 @@ class Container implements ArrayAccess, ContainerInterface
     protected $extenders = [];
 
     /**
-     * All of the registered tags.
-     *
-     * @var array
-     */
-    protected $tags = [];
-
-    /**
      * The stack of concretions currently being built.
      *
      * @var array
@@ -328,21 +321,6 @@ class Container implements ArrayAccess, ContainerInterface
     }
 
     /**
-     * Register a binding if it hasn't already been registered.
-     *
-     * @param  string  $abstract
-     * @param  \Closure|string|null  $concrete
-     * @param  bool  $shared
-     * @return void
-     */
-    public function bindIf($abstract, $concrete = null, $shared = false)
-    {
-        if (! $this->bound($abstract)) {
-            $this->bind($abstract, $concrete, $shared);
-        }
-    }
-
-    /**
      * Register a shared binding in the container.
      *
      * @param  string  $abstract
@@ -426,47 +404,6 @@ class Container implements ArrayAccess, ContainerInterface
                 }
             }
         }
-    }
-
-    /**
-     * Assign a set of tags to a given binding.
-     *
-     * @param  array|string  $abstracts
-     * @param  array|mixed   ...$tags
-     * @return void
-     */
-    public function tag($abstracts, $tags)
-    {
-        $tags = is_array($tags) ? $tags : array_slice(func_get_args(), 1);
-
-        foreach ($tags as $tag) {
-            if (! isset($this->tags[$tag])) {
-                $this->tags[$tag] = [];
-            }
-
-            foreach ((array) $abstracts as $abstract) {
-                $this->tags[$tag][] = $abstract;
-            }
-        }
-    }
-
-    /**
-     * Resolve all of the bindings for a given tag.
-     *
-     * @param  string  $tag
-     * @return array
-     */
-    public function tagged($tag)
-    {
-        $results = [];
-
-        if (isset($this->tags[$tag])) {
-            foreach ($this->tags[$tag] as $abstract) {
-                $results[] = $this->make($abstract);
-            }
-        }
-
-        return $results;
     }
 
     /**
@@ -585,18 +522,6 @@ class Container implements ArrayAccess, ContainerInterface
     }
 
     /**
-     * An alias function name for make().
-     *
-     * @param  string  $abstract
-     * @param  array  $parameters
-     * @return mixed
-     */
-    public function makeWith($abstract, array $parameters = [])
-    {
-        return $this->make($abstract, $parameters);
-    }
-
-    /**
      * Resolve the given type from the container.
      *
      * @param  string  $abstract
@@ -609,7 +534,7 @@ class Container implements ArrayAccess, ContainerInterface
     }
 
     /**
-     *  {@inheritdoc}
+     * get service
      */
     public function get($id)
     {
@@ -950,7 +875,7 @@ class Container implements ArrayAccess, ContainerInterface
      * @param  \ReflectionParameter  $parameter
      * @return void
      *
-     * @throws \Contracts\Container\BindingResolutionException
+     * @throws \Zim\Container\BindingResolutionException
      */
     protected function unresolvablePrimitive(ReflectionParameter $parameter)
     {

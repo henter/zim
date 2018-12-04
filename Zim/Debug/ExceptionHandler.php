@@ -301,7 +301,7 @@ EOF;
      */
     private function formatArgs(array $args)
     {
-        $result = array();
+        $result = [];
         foreach ($args as $key => $item) {
             if ('object' === $item[0]) {
                 $formattedValue = sprintf('<em>object</em>(%s)', $this->formatClass($item[1]));

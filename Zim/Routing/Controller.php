@@ -8,9 +8,29 @@
 
 namespace Zim\Routing;
 
+use Zim\App;
+use Zim\Http\Request;
+
 class Controller
 {
     protected $actions = [];
+
+    /**
+     * @param $make
+     * @return mixed
+     */
+    public function app($make)
+    {
+        return App::app($make);
+    }
+
+    /**
+     * @return Request
+     */
+    public function getRequest()
+    {
+        return $this->app('request');
+    }
 
     /**
      * @param $uri

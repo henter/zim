@@ -48,7 +48,7 @@ trait AppHelper
 
     /**
      * @param null $make
-     * @return mixed|static
+     * @return mixed
      */
     public static function app($make = null)
     {

@@ -7,7 +7,7 @@ namespace Zim\Routing;
  * @author Fabien Potencier <fabien@symfony.com>
  * @author Tobias Schultze <http://tobion.de>
  */
-class Route implements \Serializable
+class Route
 {
     private $path = '/';
     private $methods = [];
@@ -41,38 +41,6 @@ class Route implements \Serializable
         $this->addRequirements($requirements);
         $this->addOptions($options);
         $this->setMethods($methods);
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function serialize()
-    {
-        return serialize(array(
-            'path' => $this->path,
-            'defaults' => $this->defaults,
-            'requirements' => $this->requirements,
-            'options' => $this->options,
-            'methods' => $this->methods,
-            'compiled' => $this->compiled,
-        ));
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function unserialize($serialized)
-    {
-        $data = unserialize($serialized);
-        $this->path = $data['path'];
-        $this->defaults = $data['defaults'];
-        $this->requirements = $data['requirements'];
-        $this->options = $data['options'];
-        $this->methods = $data['methods'];
-
-        if (isset($data['compiled'])) {
-            $this->compiled = $data['compiled'];
-        }
     }
 
     /**

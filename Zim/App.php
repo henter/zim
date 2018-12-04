@@ -9,6 +9,10 @@ namespace Zim;
 
 use Zim\Config\ConfigInterface;
 use Zim\Container\Container;
+use Zim\Container\ContainerInterface;
+use Zim\Debug\FatalErrorException;
+use Zim\Debug\FatalThrowableError;
+use Zim\Event\Event;
 use Zim\Service\LogService;
 use Zim\Service\Service;
 use Zim\Debug\ErrorHandler;
@@ -69,12 +73,11 @@ class App extends Container
             $this->basePath = $basePath;
         }
 
+        $this->bootstrapConfig();
         $this->bootstrapContainer();
         $this->registerErrorHandling();
-        $this->bootstrapConfig();
 
-        //router after config
-        $this->bootstrapRouter();
+        $this->router = new Router();
 
         $this->registerServices();
     }
@@ -104,11 +107,6 @@ class App extends Container
         });
         $this->configure('app');
         $this->configure('routes');
-    }
-
-    protected function bootstrapRouter()
-    {
-        $this->router = new Router();
     }
 
     protected function registerServices()
@@ -234,13 +232,10 @@ class App extends Container
 
         $this->loadedConfigurations[$name] = true;
 
-        $path = $this->getConfigurationPath($name);
-
-        if ($path) {
+        if ($path = $this->getConfigurationPath($name)) {
             $this->make('config')->set($name, require $path);
         }
     }
-
 
     /**
      * Get the path to the given configuration file.
@@ -269,6 +264,7 @@ class App extends Container
                 return $path;
             }
         }
+        return '';
     }
 
     /**
@@ -279,24 +275,16 @@ class App extends Container
     protected function registerContainerAliases()
     {
         $this->aliases = [
+            Container::class => 'app',
+            ContainerInterface::class => 'app',
+            App::class => 'app',
             ConfigInterface::class => 'config',
-            //TODO
-            'Illuminate\Contracts\Foundation\Application' => 'app',
-            'Illuminate\Contracts\Cache\Factory' => 'cache',
-            'Illuminate\Contracts\Cache\Repository' => 'cache.store',
-            'Illuminate\Container\Container' => 'app',
-            'Illuminate\Contracts\Container\Container' => 'app',
-            'Illuminate\Contracts\Events\Dispatcher' => 'events',
-            'log' => 'Psr\Log\LoggerInterface',
-            'request' => 'Illuminate\Http\Request',
-            'Laravel\Lumen\Routing\Router' => 'router',
         ];
     }
 
     public function env()
     {
-        //TODO
-        return 'dev';
+        return self::config('app.env');
     }
 
     /**
@@ -306,39 +294,14 @@ class App extends Container
      */
     protected function registerErrorHandling()
     {
-        //TODO
-        return $this->debug();
-
-        error_reporting(-1);
-
-        set_error_handler(function ($level, $message, $file = '', $line = 0) {
-            if (error_reporting() & $level) {
-                throw new \ErrorException($message, 0, $level, $file, $line);
-            }
-        });
-
-        set_exception_handler(function ($e) {
-            $this->handleUncaughtException($e);
-        });
-
-        register_shutdown_function(function () {
-            $this->handleShutdown();
-        });
-    }
-
-    public function debug()
-    {
         error_reporting(E_ALL);
 
-        if (!\in_array(\PHP_SAPI, array('cli', 'phpdbg'), true)) {
+        //do not handle for console
+        if (!$this->runningInConsole()) {
             ini_set('display_errors', 0);
             ExceptionHandler::register();
-        } elseif ((!filter_var(ini_get('log_errors'), FILTER_VALIDATE_BOOLEAN) || ini_get('error_log'))) {
-            // CLI - display errors only if they're not already logged to STDERR
-            ini_set('display_errors', 1);
+            ErrorHandler::register();
         }
-        ErrorHandler::register();
     }
-
 
 }

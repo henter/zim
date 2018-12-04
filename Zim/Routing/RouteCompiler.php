@@ -46,7 +46,7 @@ class RouteCompiler
      */
     public static function compile(Route $route)
     {
-        $variables = array();
+        $variables = [];
         $path = $route->getPath();
 
         $result = self::compilePattern($route, $path);
@@ -77,9 +77,9 @@ class RouteCompiler
 
     private static function compilePattern(Route $route, $pattern)
     {
-        $tokens = array();
-        $variables = array();
-        $matches = array();
+        $tokens = [];
+        $variables = [];
+        $matches = [];
         $pos = 0;
         $defaultSeparator = '/';
         $useUtf8 = preg_match('//u', $pattern);

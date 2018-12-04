@@ -16,7 +16,7 @@ namespace Zim\Routing;
  *
  * @author Fabien Potencier <fabien@symfony.com>
  */
-class CompiledRoute implements \Serializable
+class CompiledRoute
 {
     private $variables;
     private $tokens;
@@ -31,41 +31,13 @@ class CompiledRoute implements \Serializable
      * @param array       $pathVariables An array of path variables
      * @param array       $variables     An array of variables (variables defined in the path and in the host patterns)
      */
-    public function __construct(string $staticPrefix, string $regex, array $tokens, array $pathVariables, array $variables = array())
+    public function __construct(string $staticPrefix, string $regex, array $tokens, array $pathVariables, array $variables = [])
     {
         $this->staticPrefix = $staticPrefix;
         $this->regex = $regex;
         $this->tokens = $tokens;
         $this->pathVariables = $pathVariables;
         $this->variables = $variables;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function serialize()
-    {
-        return serialize(array(
-            'vars' => $this->variables,
-            'path_prefix' => $this->staticPrefix,
-            'path_regex' => $this->regex,
-            'path_tokens' => $this->tokens,
-            'path_vars' => $this->pathVariables,
-        ));
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function unserialize($serialized)
-    {
-        $data = unserialize($serialized, array('allowed_classes' => false));
-
-        $this->variables = $data['vars'];
-        $this->staticPrefix = $data['path_prefix'];
-        $this->regex = $data['path_regex'];
-        $this->tokens = $data['path_tokens'];
-        $this->pathVariables = $data['path_vars'];
     }
 
     /**

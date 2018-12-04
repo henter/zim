@@ -8,6 +8,7 @@
 
 return [
     'name' => 'Zim Demo',
+    'env' => 'dev',
 
     'services' => [
         \App\Service\Demo::class,

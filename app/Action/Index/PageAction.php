@@ -8,11 +8,14 @@
 
 namespace App\Action\Index;
 
+use Zim\Config\ConfigInterface;
+
 class PageAction extends \Zim\Routing\Action
 {
 
     public function execute()
     {
+        var_dump($this->app(ConfigInterface::class)->get('app.routes'));
         return 'page response test';
     }
 }

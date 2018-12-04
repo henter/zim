@@ -31,12 +31,12 @@ class FlattenException
     private $file;
     private $line;
 
-    public static function create(\Exception $exception, $statusCode = null, array $headers = array())
+    public static function create(\Exception $exception, $statusCode = null, array $headers = [])
     {
         return static::createFromThrowable($exception, $statusCode, $headers);
     }
 
-    public static function createFromThrowable(\Throwable $exception, ?int $statusCode = null, array $headers = array()): self
+    public static function createFromThrowable(\Throwable $exception, ?int $statusCode = null, array $headers = []): self
     {
         $e = new static();
         $e->setMessage($exception->getMessage());
@@ -69,7 +69,7 @@ class FlattenException
 
     public function toArray()
     {
-        $exceptions = array();
+        $exceptions = [];
         foreach (array_merge(array($this), $this->getAllPrevious()) as $exception) {
             $exceptions[] = array(
                 'message' => $exception->getMessage(),
@@ -209,7 +209,7 @@ class FlattenException
 
     public function getAllPrevious()
     {
-        $exceptions = array();
+        $exceptions = [];
         $e = $this;
         while ($e = $e->getPrevious()) {
             $exceptions[] = $e;
@@ -233,7 +233,7 @@ class FlattenException
      */
     public function setTrace($trace, $file, $line)
     {
-        $this->trace = array();
+        $this->trace = [];
         $this->trace[] = array(
             'namespace' => '',
             'short_class' => '',
@@ -242,7 +242,7 @@ class FlattenException
             'function' => '',
             'file' => $file,
             'line' => $line,
-            'args' => array(),
+            'args' => [],
         );
         foreach ($trace as $entry) {
             $class = '';
@@ -261,7 +261,7 @@ class FlattenException
                 'function' => isset($entry['function']) ? $entry['function'] : null,
                 'file' => isset($entry['file']) ? $entry['file'] : null,
                 'line' => isset($entry['line']) ? $entry['line'] : null,
-                'args' => isset($entry['args']) ? $this->flattenArgs($entry['args']) : array(),
+                'args' => isset($entry['args']) ? $this->flattenArgs($entry['args']) : [],
             );
         }
 
@@ -270,7 +270,7 @@ class FlattenException
 
     private function flattenArgs($args, $level = 0, &$count = 0)
     {
-        $result = array();
+        $result = [];
         foreach ($args as $key => $value) {
             if (++$count > 1e4) {
                 return array('array', '*SKIPPED over 10000 entries*');
