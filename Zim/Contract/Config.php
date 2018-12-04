@@ -1,8 +1,8 @@
 <?php
 
-namespace Zim\Config;
+namespace Zim\Contract;
 
-interface ConfigInterface
+interface Config
 {
     /**
      * Determine if the given configuration value exists.

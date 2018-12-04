@@ -10,6 +10,7 @@ namespace Zim\Config;
 
 use ArrayAccess;
 use Zim\Support\Arr;
+use Zim\Contract\Config as ConfigInterface;
 
 class Config implements ArrayAccess, ConfigInterface
 {

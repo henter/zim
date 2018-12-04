@@ -9,6 +9,9 @@
 namespace App\Service;
 
 use Zim\Event\Event;
+use Zim\Event\RequestEvent;
+use Zim\Event\ResponseEvent;
+use Zim\Http\Response;
 use Zim\Service\Service;
 
 class Demo extends Service
@@ -22,9 +25,24 @@ class Demo extends Service
         $events = [
             Event::ROUTE,
             Event::TERMINATE,
+            RequestEvent::class,
+            ResponseEvent::class,
         ];
+
         $this->app->getEvent()->listen($events, function($e, $payload) {
-            var_dump('event '.$e);
+            //var_dump('event '.$e, $payload);
+            if ($e == RequestEvent::class && $payload instanceof RequestEvent) {
+                /**
+                 * @var Response $resp
+                 */
+                $resp = new Response('test request event return response');
+                //$payload->setResponse($resp);
+            }
+
+            if ($e == ResponseEvent::class && $payload instanceof ResponseEvent) {
+                $resp = new Response('test response event');
+                $payload->setResponse($resp);
+            }
         });
     }
 }

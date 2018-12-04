@@ -6,7 +6,7 @@
  *
  */
 
-namespace Zim\Routing;
+namespace Zim\Http;
 
 class Action extends Controller
 {

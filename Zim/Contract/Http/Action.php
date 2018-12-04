@@ -8,7 +8,7 @@
 
 namespace Zim\Contract\Http;
 
-interface Request
+interface Action
 {
 
 }

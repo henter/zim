@@ -8,8 +8,6 @@
 
 namespace App\Controller;
 
-use Zim\Routing\Controller;
-
 class FooController extends Controller
 {
 

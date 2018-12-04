@@ -9,7 +9,6 @@
 namespace App\Controller;
 
 use App\Action\Index\PageAction;
-use Zim\Routing\Controller;
 
 class IndexController extends Controller
 {

@@ -7,7 +7,7 @@
  */
 
 return [
-    ['/', 'Index@index'],
+    //['/', 'Index@index'],
     ['/test', 'Index@test'],
     ['/foo', 'Foo@index'],
     ['/foo/test', 'Foo@foo'],

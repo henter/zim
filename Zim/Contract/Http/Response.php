@@ -6,9 +6,9 @@
  *
  */
 
-namespace Zim\Http;
+namespace Zim\Contract\Http;
 
 interface Response
 {
-
+    public function prepare(Request $request);
 }

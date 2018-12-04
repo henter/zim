@@ -12,7 +12,7 @@ namespace Zim\Event;
 use Zim\Contract\Http\Request;
 use Zim\Contract\Http\Response;
 
-class RequestEvent
+class ResponseEvent
 {
     /**
      * @var Request
@@ -24,7 +24,7 @@ class RequestEvent
      */
     protected $response;
 
-    public function __construct(Request $request, Response $response = null)
+    public function __construct(Request $request, Response $response)
     {
         $this->request = $request;
         $this->response = $response;

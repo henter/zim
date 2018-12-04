@@ -8,13 +8,14 @@
 
 namespace Zim\Http;
 
+use Zim\Contract\Http\Request as RequestContract;
 
 /**
  * Response represents an HTTP response.
  *
  * @author Fabien Potencier <fabien@symfony.com>
  */
-class Response
+class Response implements \Zim\Contract\Http\Response
 {
     const HTTP_CONTINUE = 100;
     const HTTP_SWITCHING_PROTOCOLS = 101;
@@ -170,7 +171,10 @@ class Response
     );
 
     /**
-     * @throws \InvalidArgumentException When the HTTP status code is not valid
+     * Response constructor.
+     * @param string $content
+     * @param int $status
+     * @param array $headers
      */
     public function __construct($content = '', int $status = 200, array $headers = [])
     {
@@ -235,7 +239,7 @@ class Response
      *
      * @return $this
      */
-    public function prepare(Request $request)
+    public function prepare(RequestContract $request)
     {
         $headers = $this->headers;
 

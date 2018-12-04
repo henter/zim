@@ -168,7 +168,6 @@ class Dispatcher
 
         $responses = [];
 
-        var_dump('fire '.$event);
         foreach ($this->getListeners($event) as $listener) {
             $response = $listener($event, $payload);
 
@@ -202,7 +201,8 @@ class Dispatcher
     protected function parseEventAndPayload($event, $payload)
     {
         if (is_object($event)) {
-            [$payload, $event] = [[$event], get_class($event)];
+            //[$payload, $event] = [[$event], get_class($event)];
+            return [get_class($event), $event];
         }
 
         return [$event, Arr::wrap($payload)];

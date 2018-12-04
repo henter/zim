@@ -8,14 +8,14 @@
 
 namespace Zim\Traits;
 
-use Zim\App;
 use Zim\Event\Event;
 use Zim\Event\RequestEvent;
+use Zim\Event\ResponseEvent;
 use Zim\Http\Exception\NotFoundException;
 use Zim\Http\Exception\ResponseException;
 use Zim\Http\Request;
 use Zim\Http\Response;
-use Zim\Routing\Controller;
+use Zim\Http\Controller;
 
 trait RouteRequest
 {
@@ -57,7 +57,7 @@ trait RouteRequest
      */
     private function guessAppController($uri)
     {
-        if (file_exists(APP_PATH.'/Controller/'.ucfirst($uri).'Controller.php')) {
+        if (class_exists('App\\Controller\\'.ucfirst($uri).'Controller')) {
             return ucfirst($uri).'Controller';
         }
 
@@ -77,11 +77,16 @@ trait RouteRequest
      */
     public function tryCallControllerAction(Request $request)
     {
+        //default IndexController IndexAction, same as yaf
         $segments = explode('/', $request->getPathInfo());
-        if (count($segments) < 3) {
-            throw new NotFoundException('path not found');
+        if ($request->getPathInfo() == '/') {
+            $c = $a = 'index';
+        } else if (count($segments) <= 2) {
+            [, $c] = $segments;
+            $a = 'index';
+        } else {
+            [, $c, $a] = $segments;
         }
-        list(, $c, $a) = explode('/', $request->getPathInfo());
 
         //try controller
         if (!$c = $this->guessAppController($c)) {
@@ -114,17 +119,20 @@ trait RouteRequest
      */
     public function handle(Request $request)
     {
+        $this->boot();
+        $this->instance('request', $request);
+
         try {
-            $this->boot();
+            $requestEvent = new RequestEvent($request);
+            $this->dispatch($requestEvent);
 
-            $this->instance('request', $request);
-            $this->dispatch(Event::ROUTE, ['request' => $request]);
+            if ($resp = $requestEvent->getResponse()) {
+                return $resp->prepare($request);
+            }
+
             $routeInfo = $this->router->match($request->getPathInfo(), $request->getMethod());
-
-            $this->dispatch(new RequestEvent($request, $routeInfo));
             $actionReturn = $this->callControllerAction($routeInfo);
         } catch (NotFoundException $e) {
-            $this->dispatch(new RequestEvent($request));
             $actionReturn = $this->tryCallControllerAction($request);
         } catch (\Throwable $e) {
             //TODO, after replaced router
@@ -140,8 +148,10 @@ trait RouteRequest
             throw new ResponseException('invalid response');
         }
 
-        $this->dispatch(Event::RESPONSE);
-        return $response->prepare($request);
+        $respEvent = new ResponseEvent($request, $response);
+        $this->dispatch($respEvent);
+
+        return $respEvent->getResponse()->prepare($request);
     }
 
     /**

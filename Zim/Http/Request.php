@@ -12,7 +12,7 @@ namespace Zim\Http;
  * Request represents an HTTP request.
  * @author Fabien Potencier <fabien@symfony.com>
  */
-class Request
+class Request implements \Zim\Contract\Http\Request
 {
     const METHOD_HEAD = 'HEAD';
     const METHOD_GET = 'GET';

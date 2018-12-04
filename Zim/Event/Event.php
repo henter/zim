@@ -17,6 +17,7 @@ class Event
     const ROUTE = 'zim.route';
 
     //before request dispatch
+    //TODO, replaced with RequestEvent
     const REQUEST = 'zim.request';
 
     //controller found

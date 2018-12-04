@@ -6,12 +6,12 @@
  *
  */
 
-namespace Zim\Routing;
+namespace Zim\Http;
 
 use Zim\App;
-use Zim\Http\Request;
+use Zim\Contract\Http\Controller as ControllerContract;
 
-class Controller
+class Controller implements ControllerContract
 {
     protected $actions = [];
 

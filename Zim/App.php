@@ -7,12 +7,8 @@
  */
 namespace Zim;
 
-use Zim\Config\ConfigInterface;
 use Zim\Container\Container;
 use Zim\Container\ContainerInterface;
-use Zim\Debug\FatalErrorException;
-use Zim\Debug\FatalThrowableError;
-use Zim\Event\Event;
 use Zim\Service\LogService;
 use Zim\Service\Service;
 use Zim\Debug\ErrorHandler;
@@ -22,6 +18,7 @@ use Zim\Routing\Router;
 use Zim\Traits\AppHelper;
 use Zim\Traits\RouteRequest;
 use Zim\Config\Config;
+use Zim\Contract\Config as ConfigInterface;
 
 /**
  * Class App
