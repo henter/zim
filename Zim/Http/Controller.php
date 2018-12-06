@@ -9,9 +9,8 @@
 namespace Zim\Http;
 
 use Zim\App;
-use Zim\Contract\Http\Controller as ControllerContract;
 
-class Controller implements ControllerContract
+class Controller
 {
     protected $actions = [];
 
@@ -36,7 +35,7 @@ class Controller implements ControllerContract
      * @param $uri
      * @return mixed|null
      */
-    public function getAction($uri)
+    public function getActionClass($uri)
     {
         return $this->actions[$uri] ?? null;
     }
@@ -45,7 +44,7 @@ class Controller implements ControllerContract
      * @param $uri
      * @return null
      */
-    public function getMethod($uri)
+    public function getAction($uri)
     {
         foreach (get_class_methods($this) as $method) {
             if (strtolower($method) == strtolower($uri).'action') {

@@ -8,6 +8,8 @@
 
 namespace Zim\Event;
 
+use Zim\App;
+
 class Event
 {
     //uncaught exception
@@ -32,4 +34,30 @@ class Event
     //response sent
     const TERMINATE = 'zim.terminate';
 
+    /**
+     * @param $event
+     * @param array $payload
+     * @param bool $halt
+     */
+    public static function fire($event, $payload = [], $halt = false)
+    {
+        App::getInstance()->make(Dispatcher::class)->fire($event, $payload, $halt);
+    }
+
+    /**
+     * @param $event
+     * @param array $payload
+     */
+    public static function listen($event, $payload = [])
+    {
+        App::getInstance()->make(Dispatcher::class)->listen($event, $payload);
+    }
+
+    /**
+     * @param callable $callback
+     */
+    public static function on(callable $callback)
+    {
+        App::getInstance()->make(Dispatcher::class)->on($callback);
+    }
 }

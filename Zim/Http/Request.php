@@ -28,35 +28,35 @@ class Request implements \Zim\Contract\Http\Request
     /**
      * Custom parameters.
      *
-     * @var \Zim\Http\ParameterBag
+     * @var ParameterBag
      */
     public $attributes;
 
     /**
      * Request body parameters ($_POST).
      *
-     * @var \Zim\Http\ParameterBag
+     * @var ParameterBag
      */
     public $request;
 
     /**
      * Query string parameters ($_GET).
      *
-     * @var \Zim\Http\ParameterBag
+     * @var ParameterBag
      */
     public $query;
 
     /**
      * Server and execution environment parameters ($_SERVER).
      *
-     * @var \Zim\Http\ServerBag
+     * @var ServerBag
      */
     public $server;
 
     /**
      * Headers (taken from the $_SERVER).
      *
-     * @var \Zim\Http\HeaderBag
+     * @var HeaderBag
      */
     public $headers;
 
@@ -153,10 +153,6 @@ class Request implements \Zim\Contract\Http\Request
         }
 
         return $request;
-    }
-
-    private static function createRequestFromFactory(array $query = [], array $request = [], array $attributes = [], array $server = [], $content = null)
-    {
     }
 
     /**

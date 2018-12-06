@@ -15,6 +15,7 @@ class Route
     private $requirements = [];
     private $options = [];
 
+    private $parameters = [];
     /**
      * @var CompiledRoute|null
      */
@@ -28,19 +29,52 @@ class Route
      *
      * @param string          $path         The path pattern to match
      * @param array           $defaults     An array of default parameter values
+     * @param string|string[] $methods      A required HTTP method or an array of restricted methods
      * @param array           $requirements An array of requirements for parameters (regexes)
      * @param array           $options      An array of options
-     * @param string          $host         The host pattern to match
-     * @param string|string[] $schemes      A required URI scheme or an array of restricted schemes
-     * @param string|string[] $methods      A required HTTP method or an array of restricted methods
      */
-    public function __construct(string $path, array $defaults = [], array $requirements = [], array $options = [], ?string $host = '', $schemes = [], $methods = [])
+    public function __construct(string $path, array $defaults = [], $methods = [], array $requirements = [],  array $options = [])
     {
         $this->setPath($path);
         $this->addDefaults($defaults);
+        $this->setMethods($methods);
         $this->addRequirements($requirements);
         $this->addOptions($options);
-        $this->setMethods($methods);
+    }
+
+    /**
+     * @param array $parameters
+     * @return $this
+     */
+    public function setParameters(array $parameters)
+    {
+        $this->parameters = $this->mergeDefaults($parameters);
+        //TODO
+        unset($this->parameters['_controller'], $this->parameters['_action']);
+        return $this;
+    }
+
+    public function getParameters()
+    {
+        return $this->parameters;
+    }
+
+    /**
+     * Get merged default parameters.
+     *
+     * @param array $params   The parameters
+     *
+     * @return array Merged default parameters
+     */
+    protected function mergeDefaults($params)
+    {
+        $defaults = $this->getDefaults();
+        foreach ($params as $key => $value) {
+            if (!\is_int($key) && null !== $value) {
+                $defaults[$key] = $value;
+            }
+        }
+        return $defaults;
     }
 
     /**

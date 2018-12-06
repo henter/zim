@@ -18,7 +18,7 @@ use Zim\Routing\Router;
 use Zim\Traits\AppHelper;
 use Zim\Traits\RouteRequest;
 use Zim\Config\Config;
-use Zim\Contract\Config as ConfigInterface;
+use Zim\Contract\Config as ConfigContract;
 
 /**
  * Class App
@@ -273,7 +273,7 @@ class App extends Container
             Container::class => 'app',
             ContainerInterface::class => 'app',
             App::class => 'app',
-            ConfigInterface::class => 'config',
+            ConfigContract::class => 'config',
         ];
     }
 

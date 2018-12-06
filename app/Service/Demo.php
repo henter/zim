@@ -8,6 +8,7 @@
 
 namespace App\Service;
 
+use Zim\Config\Config;
 use Zim\Event\Event;
 use Zim\Event\RequestEvent;
 use Zim\Event\ResponseEvent;
@@ -41,8 +42,17 @@ class Demo extends Service
 
             if ($e == ResponseEvent::class && $payload instanceof ResponseEvent) {
                 $resp = new Response('test response event');
-                $payload->setResponse($resp);
+                //$payload->setResponse($resp);
             }
         });
+
+        $this->app->getEvent()->on(function(RequestEvent $e) {
+            $resp = new Response('test on event');
+            //$e->setResponse($resp);
+        });
+
+
     }
+
 }
+

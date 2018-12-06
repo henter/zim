@@ -29,9 +29,9 @@ trait AppHelper
      * @param bool $halt
      * @return mixed
      */
-    public function dispatch($event, $payload = [], $halt = false)
+    public function fire($event, $payload = [], $halt = false)
     {
-        return $this->getEvent()->dispatch($event, $payload, $halt);
+        return $this->getEvent()->fire($event, $payload, $halt);
     }
 
     /**

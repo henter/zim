@@ -126,7 +126,7 @@ class BoundMethod
      *
      * @throws \ReflectionException
      */
-    protected static function getCallReflector($callback)
+    public static function getCallReflector($callback)
     {
         if (is_string($callback) && strpos($callback, '::') !== false) {
             $callback = explode('::', $callback);

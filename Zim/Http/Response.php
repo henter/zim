@@ -65,7 +65,7 @@ class Response implements \Zim\Contract\Http\Response
     const HTTP_FAILED_DEPENDENCY = 424;                                           // RFC4918
 
     /**
-     * @var \Zim\Http\ResponseHeaderBag
+     * @var ResponseHeaderBag
      */
     public $headers;
 

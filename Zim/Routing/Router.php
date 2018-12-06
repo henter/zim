@@ -10,6 +10,8 @@ namespace Zim\Routing;
 
 use Zim\App;
 use Zim\Http\Exception\NotFoundException;
+use Zim\Http\Request;
+use Zim\Http\Response;
 
 class Router
 {
@@ -35,7 +37,10 @@ class Router
         $configRoutes = App::config('routes');
         foreach ($configRoutes as list($pattern, $to)) {
             list($controller, $action) = explode('@', $to);
-            $routes->add($pattern, new Route($pattern, ['_controller' => 'App\\Controller\\'.$controller.'Controller', '_action' => $action.'Action']));
+            //TODO, route name
+            $name = $pattern;
+
+            $routes->add($name, new Route($pattern, ['_controller' => 'App\\Controller\\'.$controller.'Controller', '_action' => $action.'Action']));
         }
 
         return $routes;
@@ -48,16 +53,13 @@ class Router
     }
 
     /**
-     * @param $uri
-     * @return array
+     * Dispatch the request to the application.
+     *
+     * @param  Request  $request
+     * @return Route
      */
-    public function match($uri)
+    public function dispatch(Request $request)
     {
-        try {
-            return $this->matcher->match($uri);
-        } catch (\Exception $e) {
-            throw new NotFoundException($uri.' not found');
-        }
+        return $this->matcher->matchRequest($request);
     }
-
 }

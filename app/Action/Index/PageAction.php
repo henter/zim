@@ -13,6 +13,7 @@ use Zim\Contract\Config;
 
 class PageAction extends Action
 {
+    protected static $method = 'GET';
 
     public function execute()
     {

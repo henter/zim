@@ -8,6 +8,7 @@
 
 namespace Zim\Traits;
 
+use Zim\Routing\RouteDependencyResolverTrait;
 use Zim\Event\Event;
 use Zim\Event\RequestEvent;
 use Zim\Event\ResponseEvent;
@@ -16,9 +17,17 @@ use Zim\Http\Exception\ResponseException;
 use Zim\Http\Request;
 use Zim\Http\Response;
 use Zim\Http\Controller;
+use Zim\Routing\Route;
+use Zim\Routing\Router;
 
 trait RouteRequest
 {
+    use RouteDependencyResolverTrait;
+
+    /**
+     * @var Router
+     */
+    protected $router;
 
     /**
      * @param null $request
@@ -34,20 +43,20 @@ trait RouteRequest
 
     public function terminate(Request $request, Response $response)
     {
-        $this->dispatch(Event::TERMINATE);
+        $this->fire(Event::TERMINATE);
     }
 
     /**
-     * @param  array $routeInfo
+     * @param Route $route
+     * @param $controller
+     * @param $method
      * @return mixed|string|array|bool|Response
      */
-    protected function callControllerAction($routeInfo)
+    protected function callControllerAction(Route $route, $controller, $method)
     {
-        $controller = $this->make($routeInfo['_controller']);
-        if (!method_exists($controller, $routeInfo['_action'])) {
-            throw new NotFoundException('method not found');
-        }
-        return $controller->{$routeInfo['_action']}();
+        $parameters = $this->resolveClassMethodDependencies($route->getParameters(), $controller, $method);
+
+        return $controller->{$method}(...array_values($parameters));
     }
 
     /**
@@ -71,6 +80,8 @@ trait RouteRequest
     }
 
     /**
+     * TODO, united to callable return
+     *
      * @param Request $request
      * @return mixed
      * @throws \Throwable
@@ -98,18 +109,20 @@ trait RouteRequest
          */
         $controller = $this->make('App\\Controller\\'.$c);
 
-        //try controller method ?
-        if ($method = $controller->getMethod($a)) {
-            return $controller->{$method}();
+        //try controller action ?
+        if ($method = $controller->getAction($a)) {
+            $parameters = $this->resolveMethodDependencies([], new \ReflectionMethod($controller, $method));
+            return $controller->{$method}(...array_values($parameters));
         }
 
         //try controller action class
-        $actionClass = $controller->getAction($a);
-        if (!class_exists($actionClass)) {
+        if (!class_exists($actionClass = $controller->getActionClass($a))) {
             throw new NotFoundException('action not found');
         }
 
-        return $this->make($actionClass)->execute();
+        $action = $this->make($actionClass);
+        $parameters = $this->resolveMethodDependencies([], new \ReflectionMethod($action, 'execute'));
+        return $action->execute(...array_values($parameters));
     }
 
     /**
@@ -119,39 +132,69 @@ trait RouteRequest
      */
     public function handle(Request $request)
     {
-        $this->boot();
         $this->instance('request', $request);
+        $this->boot();
 
         try {
             $requestEvent = new RequestEvent($request);
-            $this->dispatch($requestEvent);
+            $this->fire($requestEvent);
 
             if ($resp = $requestEvent->getResponse()) {
                 return $resp->prepare($request);
             }
 
-            $routeInfo = $this->router->match($request->getPathInfo(), $request->getMethod());
-            $actionReturn = $this->callControllerAction($routeInfo);
+            $response = $this->dispatchToRouter($request);
         } catch (NotFoundException $e) {
-            $actionReturn = $this->tryCallControllerAction($request);
+            $response = $this->dispatchToDefault($request);
         } catch (\Throwable $e) {
-            //TODO, after replaced router
             //return $this->errorResponse('exception '.$e->getMessage())->prepare($request);
             throw $e;
         }
 
-        if ($actionReturn instanceof Response) {
-            $response = $actionReturn;
-        } else if (is_array($actionReturn) || is_scalar($actionReturn)) {
-            $response = new Response($actionReturn);
-        } else {
-            throw new ResponseException('invalid response');
-        }
-
         $respEvent = new ResponseEvent($request, $response);
-        $this->dispatch($respEvent);
+        $this->fire($respEvent);
 
         return $respEvent->getResponse()->prepare($request);
+    }
+
+    /**
+     * @param Request $request
+     * @return Response
+     * @throws \Throwable
+     */
+    public function dispatchToDefault(Request $request) :Response
+    {
+        $return = $this->tryCallControllerAction($request);
+        return $this->toResponse($return);
+    }
+
+    /**
+     * @param Request $request
+     * @return Response
+     */
+    public function dispatchToRouter(Request $request) :Response
+    {
+        $route = $this->router->dispatch($request);
+        $controller = $this->make($route->getDefault('_controller'));
+
+        $return = $this->callControllerAction($route, $controller, $route->getDefault('_action'));
+        return $this->toResponse($return);
+    }
+
+    /**
+     * @param mixed $resp
+     * @return Response
+     */
+    private function toResponse($resp)
+    {
+        if ($resp instanceof Response) {
+            $response = $resp;
+        } else if (is_array($resp) || is_scalar($resp)) {
+            $response = new Response($resp);
+        } else {
+            throw new ResponseException(500, 'invalid response');
+        }
+        return $response;
     }
 
     /**

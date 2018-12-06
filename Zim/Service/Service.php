@@ -2,20 +2,22 @@
 
 namespace Zim\Service;
 
+use Zim\App;
+
 abstract class Service
 {
     /**
-     * @var \Zim\App
+     * @var App
      */
     protected $app;
 
     /**
      * Create a new service provider instance.
      *
-     * @param  \Zim\App $app
+     * @param  App $app
      * @return void
      */
-    public function __construct($app)
+    public function __construct(App $app)
     {
         $this->app = $app;
     }
@@ -27,6 +29,8 @@ abstract class Service
     abstract public function register();
 
     /**
+     * TODO, deferred register
+     *
      * Get the services provided by the provider.
      *
      * @return array
@@ -37,6 +41,8 @@ abstract class Service
     }
 
     /**
+     * TODO, deferred register
+     *
      * Get the events that trigger this service provider to register.
      *
      * @return array

@@ -10,5 +10,5 @@ namespace Zim\Contract\Http;
 
 interface Action
 {
-
+    public function execute();
 }

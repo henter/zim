@@ -961,16 +961,6 @@ function value($value)
 }
 
 /**
- * Determine whether the current environment is Windows based.
- *
- * @return bool
- */
-function windows_os()
-{
-    return strtolower(substr(PHP_OS, 0, 3)) === 'win';
-}
-
-/**
  * Return the given value, optionally passed through the given callback.
  *
  * @param  mixed  $value

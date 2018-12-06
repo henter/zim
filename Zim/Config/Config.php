@@ -10,9 +10,9 @@ namespace Zim\Config;
 
 use ArrayAccess;
 use Zim\Support\Arr;
-use Zim\Contract\Config as ConfigInterface;
+use Zim\Contract\Config as ConfigContract;
 
-class Config implements ArrayAccess, ConfigInterface
+class Config implements ArrayAccess, ConfigContract
 {
     /**
      * All of the configuration items.
