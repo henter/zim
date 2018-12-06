@@ -135,14 +135,13 @@ trait RouteRequest
         $this->instance('request', $request);
         $this->boot();
 
+        $requestEvent = new RequestEvent($request);
+        $this->fire($requestEvent);
+        if ($resp = $requestEvent->getResponse()) {
+            return $resp->prepare($request);
+        }
+
         try {
-            $requestEvent = new RequestEvent($request);
-            $this->fire($requestEvent);
-
-            if ($resp = $requestEvent->getResponse()) {
-                return $resp->prepare($request);
-            }
-
             $response = $this->dispatchToRouter($request);
         } catch (NotFoundException $e) {
             $response = $this->dispatchToDefault($request);
@@ -153,7 +152,6 @@ trait RouteRequest
 
         $respEvent = new ResponseEvent($request, $response);
         $this->fire($respEvent);
-
         return $respEvent->getResponse()->prepare($request);
     }
 

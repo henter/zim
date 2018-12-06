@@ -8,10 +8,10 @@
 
 namespace App\Service;
 
-use Zim\Config\Config;
 use Zim\Event\Event;
 use Zim\Event\RequestEvent;
 use Zim\Event\ResponseEvent;
+use Zim\Http\JsonResponse;
 use Zim\Http\Response;
 use Zim\Service\Service;
 
@@ -30,7 +30,7 @@ class Demo extends Service
             ResponseEvent::class,
         ];
 
-        $this->app->getEvent()->listen($events, function($e, $payload) {
+        Event::listen($events, function($e, $payload) {
             //var_dump('event '.$e, $payload);
             if ($e == RequestEvent::class && $payload instanceof RequestEvent) {
                 /**
@@ -46,9 +46,10 @@ class Demo extends Service
             }
         });
 
-        $this->app->getEvent()->on(function(RequestEvent $e) {
-            $resp = new Response('test on event');
+        Event::on(function(RequestEvent $e) {
+            $resp = new JsonResponse('test on event');
             //$e->setResponse($resp);
+            //return 222;
         });
 
 

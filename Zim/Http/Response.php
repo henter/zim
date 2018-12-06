@@ -9,13 +9,14 @@
 namespace Zim\Http;
 
 use Zim\Contract\Http\Request as RequestContract;
+use Zim\Contract\Http\Response as ResponseContract;
 
 /**
  * Response represents an HTTP response.
  *
  * @author Fabien Potencier <fabien@symfony.com>
  */
-class Response implements \Zim\Contract\Http\Response
+class Response implements ResponseContract
 {
     const HTTP_CONTINUE = 100;
     const HTTP_SWITCHING_PROTOCOLS = 101;

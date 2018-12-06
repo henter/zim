@@ -9,8 +9,8 @@
 namespace App\Controller;
 
 use App\Action\Index\PageAction;
-use Zim\Container\Container;
 use Zim\Contract\Config;
+use Zim\Http\JsonResponse;
 
 class IndexController extends Controller
 {
@@ -28,7 +28,7 @@ class IndexController extends Controller
         return 'hello zim '.$x;
     }
 
-    public function postAction($page = 2, $x = 432141, Config $config)
+    public function postAction($page = 2, $x = 'xxx', Config $config)
     {
         return 'test page '.$page.' '.$x ;
     }
