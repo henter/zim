@@ -4,7 +4,6 @@ namespace Zim\Container;
 
 use Closure;
 use Exception;
-use ArrayAccess;
 use LogicException;
 use ReflectionClass;
 use ReflectionParameter;
