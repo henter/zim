@@ -8,7 +8,6 @@
 
 namespace Zim\Traits;
 
-use Zim\Routing\RouteDependencyResolverTrait;
 use Zim\Event\Event;
 use Zim\Event\RequestEvent;
 use Zim\Event\ResponseEvent;
@@ -17,13 +16,10 @@ use Zim\Http\Exception\ResponseException;
 use Zim\Http\Request;
 use Zim\Http\Response;
 use Zim\Http\Controller;
-use Zim\Routing\Route;
 use Zim\Routing\Router;
 
 trait RouteRequest
 {
-    use RouteDependencyResolverTrait;
-
     /**
      * @var Router
      */
@@ -44,85 +40,6 @@ trait RouteRequest
     public function terminate(Request $request, Response $response)
     {
         $this->fire(Event::TERMINATE);
-    }
-
-    /**
-     * @param Route $route
-     * @param $controller
-     * @param $method
-     * @return mixed|string|array|bool|Response
-     */
-    protected function callControllerAction(Route $route, $controller, $method)
-    {
-        $parameters = $this->resolveClassMethodDependencies($route->getParameters(), $controller, $method);
-
-        return $controller->{$method}(...array_values($parameters));
-    }
-
-    /**
-     * 根据 uri 猜测 controller 类名
-     * @param string $uri
-     * @return string|bool
-     */
-    private function guessAppController($uri)
-    {
-        if (class_exists('App\\Controller\\'.ucfirst($uri).'Controller')) {
-            return ucfirst($uri).'Controller';
-        }
-
-        $files = glob(APP_PATH. '/Controller/*Controller.php');
-        foreach ($files as $file) {
-            if (strtolower(basename($file)) == $uri) {
-                return rtrim(basename($file), '.php');
-            }
-        }
-        return false;
-    }
-
-    /**
-     * TODO, united to callable return
-     *
-     * @param Request $request
-     * @return mixed
-     * @throws \Throwable
-     */
-    public function tryCallControllerAction(Request $request)
-    {
-        //default IndexController IndexAction, same as yaf
-        $segments = explode('/', $request->getPathInfo());
-        if ($request->getPathInfo() == '/') {
-            $c = $a = 'index';
-        } else if (count($segments) <= 2) {
-            [, $c] = $segments;
-            $a = 'index';
-        } else {
-            [, $c, $a] = $segments;
-        }
-
-        //try controller
-        if (!$c = $this->guessAppController($c)) {
-            throw new NotFoundException('path not found');
-        }
-
-        /**
-         * @var Controller $controller
-         */
-        $controller = $this->make('App\\Controller\\'.$c);
-
-        //try controller action ?
-        if ($method = $controller->getAction($a)) {
-            $parameters = $this->resolveMethodDependencies([], new \ReflectionMethod($controller, $method));
-            return $controller->{$method}(...array_values($parameters));
-        }
-
-        //try controller action class
-        if (!class_exists($actionClass = $controller->getActionClass($a))) {
-            throw new NotFoundException('action not found');
-        }
-
-        $action = $this->make($actionClass);
-        $parameters = $this->resolveMethodDependencies([], new \ReflectionMethod($action, 'execute'));
-        return $action->execute(...array_values($parameters));
     }
 
     /**
@@ -156,14 +73,79 @@ trait RouteRequest
     }
 
     /**
+     * 根据 uri 猜测 controller 类名
+     * @param string $uri
+     * @return string|bool
+     */
+    private function guessController($uri)
+    {
+        if (class_exists('App\\Controller\\'.ucfirst($uri).'Controller')) {
+            return ucfirst($uri).'Controller';
+        }
+
+        $suffix = 'Controller.php';
+        $files = glob(APP_PATH. '/Controller/*'.$suffix);
+        foreach ($files as $file) {
+            $name = rtrim(basename($file), $suffix);
+            if (strtolower($name) == $uri) {
+                return $name.'Controller';
+            }
+        }
+        return false;
+    }
+
+    /**
+     * default IndexController indexAction, same as yaf
+     *
+     * @param Request $request
+     * @return array
+     */
+    private function getDefaultRoute(Request $request)
+    {
+        $segments = explode('/', $request->getPathInfo());
+        if ($request->getPathInfo() == '/') {
+            $c = $a = 'Index';
+        } else if (count($segments) <= 2) {
+            [, $c] = $segments;
+            $a = 'index';
+        } else {
+            [, $c, $a] = $segments;
+        }
+
+        return [$c, $a];
+    }
+
+    /**
      * @param Request $request
      * @return Response
      * @throws \Throwable
      */
     public function dispatchToDefault(Request $request) :Response
     {
-        $return = $this->tryCallControllerAction($request);
-        return $this->toResponse($return);
+        [$c, $a] = $this->getDefaultRoute($request);
+
+        //try controller
+        if (!$c = $this->guessController($c)) {
+            throw new NotFoundException('path not found');
+        }
+
+        /**
+         * @var Controller $controller
+         */
+        $controller = $this->make('App\\Controller\\'.$c);
+
+        //try controller action ?
+        if ($method = $controller->getAction($a)) {
+            $callable = [$controller, $method];
+        } else {
+            //try controller action class
+            if (!class_exists($actionClass = $controller->getActionClass($a))) {
+                throw new NotFoundException('action not found');
+            }
+            $callable = [$this->make($actionClass), 'execute'];
+        }
+
+        return $this->toResponse($this->call($callable));
     }
 
     /**
@@ -173,9 +155,9 @@ trait RouteRequest
     public function dispatchToRouter(Request $request) :Response
     {
         $route = $this->router->dispatch($request);
-        $controller = $this->make($route->getDefault('_controller'));
+        $callable = [$this->make($route->getDefault('_controller')), $route->getDefault('_action')];
 
-        $return = $this->callControllerAction($route, $controller, $route->getDefault('_action'));
+        $return = $this->call($callable, $route->getParameters());
         return $this->toResponse($return);
     }
 
@@ -183,7 +165,7 @@ trait RouteRequest
      * @param mixed $resp
      * @return Response
      */
-    private function toResponse($resp)
+    private function toResponse($resp) :Response
     {
         if ($resp instanceof Response) {
             $response = $resp;

@@ -6,11 +6,11 @@
  *
  */
 
-namespace Zim\Container;
+namespace Zim\Contract;
 
 use Closure;
 
-interface ContainerInterface
+interface Container
 {
     /**
      * Determine if the given abstract type has been bound.

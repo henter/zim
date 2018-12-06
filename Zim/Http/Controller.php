@@ -46,6 +46,10 @@ class Controller
      */
     public function getAction($uri)
     {
+        if (method_exists($this, $uri.'Action')) {
+            return $uri.'Action';
+        }
+
         foreach (get_class_methods($this) as $method) {
             if (strtolower($method) == strtolower($uri).'action') {
                 return $method;

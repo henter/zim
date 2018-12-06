@@ -8,7 +8,7 @@
 
 namespace App\Action\Index;
 
-use App\Controller\Action;
+use App\Action\Action;
 use Zim\Contract\Config;
 
 class PageAction extends Action

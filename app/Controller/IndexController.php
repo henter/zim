@@ -9,7 +9,9 @@
 namespace App\Controller;
 
 use App\Action\Index\PageAction;
+use Zim\Contract\Container as ContainerContract;
 use Zim\Contract\Config;
+use Zim\Event\Event;
 use Zim\Http\JsonResponse;
 
 class IndexController extends Controller
@@ -28,14 +30,14 @@ class IndexController extends Controller
         return 'hello zim '.$x;
     }
 
-    public function postAction($page = 2, $x = 'xxx', Config $config)
+    public function postAction($page = 2, $x = 'xxx', ContainerContract $e, Config $config)
     {
         return 'test page '.$page.' '.$x ;
     }
 
-    public function testAction()
+    public function testAction(Config $config)
     {
-        return 'hello index test';
+        return new JsonResponse(['test' => 'ok', 'config' => $config->all()]);
     }
 
     public function test_methodAction($page, $x, Config $config)

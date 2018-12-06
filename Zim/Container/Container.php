@@ -8,8 +8,9 @@ use ArrayAccess;
 use LogicException;
 use ReflectionClass;
 use ReflectionParameter;
+use Zim\Contract\Container as ContainerContract;
 
-class Container implements ArrayAccess, ContainerInterface
+class Container implements ContainerContract
 {
     /**
      * The current globally available container (if any).
@@ -1116,44 +1117,22 @@ class Container implements ArrayAccess, ContainerInterface
     /**
      * Set the shared instance of the container.
      *
-     * @param  ContainerInterface|null  $container
-     * @return ContainerInterface|static
+     * @param  ContainerContract|null  $container
+     * @return ContainerContract|static
      */
-    public static function setInstance(ContainerInterface $container = null)
+    public static function setInstance(ContainerContract $container = null)
     {
         return static::$instance = $container;
     }
 
     /**
-     * Determine if a given offset exists.
-     *
-     * @param  string  $key
-     * @return bool
-     */
-    public function offsetExists($key)
-    {
-        return $this->bound($key);
-    }
-
-    /**
-     * Get the value at a given offset.
-     *
-     * @param  string  $key
-     * @return mixed
-     */
-    public function offsetGet($key)
-    {
-        return $this->make($key);
-    }
-
-    /**
-     * Set the value at a given offset.
+     * Set the value at a given key.
      *
      * @param  string  $key
      * @param  mixed   $value
      * @return void
      */
-    public function offsetSet($key, $value)
+    public function set($key, $value)
     {
         $this->bind($key, $value instanceof Closure ? $value : function () use ($value) {
             return $value;
@@ -1161,36 +1140,14 @@ class Container implements ArrayAccess, ContainerInterface
     }
 
     /**
-     * Unset the value at a given offset.
+     * Unset the value at a given key.
      *
      * @param  string  $key
      * @return void
      */
-    public function offsetUnset($key)
+    public function remove($key)
     {
         unset($this->bindings[$key], $this->instances[$key], $this->resolved[$key]);
     }
 
-    /**
-     * Dynamically access container services.
-     *
-     * @param  string  $key
-     * @return mixed
-     */
-    public function __get($key)
-    {
-        return $this[$key];
-    }
-
-    /**
-     * Dynamically set container services.
-     *
-     * @param  string  $key
-     * @param  mixed   $value
-     * @return void
-     */
-    public function __set($key, $value)
-    {
-        $this[$key] = $value;
-    }
 }

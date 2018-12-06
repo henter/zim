@@ -8,7 +8,6 @@
 namespace Zim;
 
 use Zim\Container\Container;
-use Zim\Container\ContainerInterface;
 use Zim\Service\LogService;
 use Zim\Service\Service;
 use Zim\Debug\ErrorHandler;
@@ -19,6 +18,7 @@ use Zim\Traits\AppHelper;
 use Zim\Traits\RouteRequest;
 use Zim\Config\Config;
 use Zim\Contract\Config as ConfigContract;
+use Zim\Contract\Container as ContainerContract;
 
 /**
  * Class App
@@ -271,7 +271,7 @@ class App extends Container
     {
         $this->aliases = [
             Container::class => 'app',
-            ContainerInterface::class => 'app',
+            ContainerContract::class => 'app',
             App::class => 'app',
             ConfigContract::class => 'config',
         ];

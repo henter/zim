@@ -6,7 +6,7 @@
  *
  */
 
-namespace App\Controller;
+namespace App\Action;
 
 use Zim\Http\Action as BaseAction;
 

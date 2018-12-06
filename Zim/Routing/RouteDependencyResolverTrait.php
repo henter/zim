@@ -7,6 +7,7 @@ use ReflectionParameter;
 use Zim\Support\Arr;
 use ReflectionFunctionAbstract;
 
+//大部分解析已用 BoundMethod 代替
 trait RouteDependencyResolverTrait
 {
     /**
