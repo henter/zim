@@ -10,4 +10,4 @@ require_once __DIR__.'/../vendor/autoload.php';
 
 define('APP_PATH', __DIR__);
 
-return new Zim\App(dirname(__DIR__));
+return new Zim\Zim();

@@ -8,6 +8,9 @@
 namespace Zim;
 
 use Zim\Container\Container;
+use Zim\Event\Event;
+use Zim\Routing\Route;
+use Zim\Routing\RouteCollection;
 use Zim\Service\LogService;
 use Zim\Service\Service;
 use Zim\Debug\ErrorHandler;
@@ -21,10 +24,10 @@ use Zim\Contract\Config as ConfigContract;
 use Zim\Contract\Container as ContainerContract;
 
 /**
- * Class App
+ * Class Zim
  * @package Zim
  */
-class App extends Container
+class Zim extends Container
 {
     const VERSION = 'Zim (1.0.0)';
 
@@ -59,24 +62,35 @@ class App extends Container
      */
     protected $basePath;
 
-    /**
-     * @var Router
-     */
-    protected $router;
-
-    public function __construct($basePath = null)
+    public function __construct()
     {
-        if ($basePath) {
-            $this->basePath = $basePath;
+        $this->basePath = dirname(APP_PATH);
+
+        $this->bootstrapContainer();
+        $this->bootstrapConfig();
+        $this->bootstrapRouter();
+
+        $this->registerErrorHandling();
+        $this->registerServices();
+    }
+
+    protected function bootstrapRouter()
+    {
+        $routes = new RouteCollection();
+
+        $configRoutes = self::config('routes');
+        foreach ($configRoutes as list($pattern, $to)) {
+            list($controller, $action) = explode('@', $to);
+            //TODO, route name
+            $name = $pattern;
+
+            $routes->add($name, new Route($pattern, [
+                '_controller' => 'App\\Controller\\'.$controller.'Controller',
+                '_action' => $action.'Action'
+            ]));
         }
 
-        $this->bootstrapConfig();
-        $this->bootstrapContainer();
-        $this->registerErrorHandling();
-
-        $this->router = new Router();
-
-        $this->registerServices();
+        $this->router = new Router($routes);
     }
 
     /**
@@ -86,21 +100,26 @@ class App extends Container
      */
     protected function bootstrapContainer()
     {
-        static::setInstance($this);
-
-        $this->instance('app', $this);
+        static::$instance = $this;
+        $this->instance('zim', $this);
+        $this->instance('config', new Config());
+        $this->instance('event', new Dispatcher());
         $this->instance('env', $this->env());
-        $this->singleton('event',Dispatcher::class);
 
-        $this->registerContainerAliases();
+        $this->aliases = [
+            Zim::class => 'zim',
+            Container::class => 'zim',
+            ContainerContract::class => 'zim',
+            Config::class => 'config',
+            ConfigContract::class => 'config',
+            Event::class => 'event',
+            Dispatcher::class => 'event',
+        ];
     }
 
     protected function bootstrapConfig()
     {
-        $this->singleton('config', function () {
-            return new Config();
-        });
-        $this->configure('app');
+        $this->configure('zim');
         $this->configure('routes');
     }
 
@@ -110,7 +129,7 @@ class App extends Container
         $this->register(LogService::class);
 
         //services from config
-        $services = self::config('app.services');
+        $services = self::config('zim.services');
         foreach ($services as $service) {
             $this->register($service);
         }
@@ -187,7 +206,7 @@ class App extends Container
      *
      * @return bool
      */
-    public function runningInConsole()
+    public function inConsole()
     {
         return php_sapi_name() === 'cli' || php_sapi_name() === 'phpdbg';
     }
@@ -204,7 +223,7 @@ class App extends Container
             return $this->basePath.($path ? '/'.$path : $path);
         }
 
-        if ($this->runningInConsole()) {
+        if ($this->inConsole()) {
             $this->basePath = getcwd();
         } else {
             $this->basePath = realpath(getcwd().'/../');
@@ -262,24 +281,9 @@ class App extends Container
         return '';
     }
 
-    /**
-     * Register the core container aliases.
-     *
-     * @return void
-     */
-    protected function registerContainerAliases()
-    {
-        $this->aliases = [
-            Container::class => 'app',
-            ContainerContract::class => 'app',
-            App::class => 'app',
-            ConfigContract::class => 'config',
-        ];
-    }
-
     public function env()
     {
-        return self::config('app.env');
+        return self::config('zim.env');
     }
 
     /**
@@ -292,7 +296,7 @@ class App extends Container
         error_reporting(E_ALL);
 
         //do not handle for console
-        if (!$this->runningInConsole()) {
+        if (!$this->inConsole()) {
             ini_set('display_errors', 0);
             ExceptionHandler::register();
             ErrorHandler::register();

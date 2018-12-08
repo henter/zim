@@ -7,9 +7,9 @@
  */
 
 /**
- * @var \Zim\App $app
+ * @var \Zim\Zim $zim
  */
-$app = require __DIR__.'/../app/bootstrap.php';
+$zim = require __DIR__.'/../app/bootstrap.php';
 
-$app->run();
+$zim->run();
 

@@ -8,10 +8,12 @@
 
 namespace Zim\Http;
 
-use Zim\App;
+use Zim\Zim;
 
 class Controller
 {
+    protected static $method;
+
     protected $actions = [];
 
     /**
@@ -20,7 +22,7 @@ class Controller
      */
     public function app($make)
     {
-        return App::app($make);
+        return Zim::app($make);
     }
 
     /**

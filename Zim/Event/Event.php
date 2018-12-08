@@ -8,7 +8,7 @@
 
 namespace Zim\Event;
 
-use Zim\App;
+use Zim\Zim;
 
 class Event
 {
@@ -18,18 +18,11 @@ class Event
     //before route match
     const ROUTE = 'zim.route';
 
-    //before request dispatch
-    //TODO, replaced with RequestEvent
-    const REQUEST = 'zim.request';
-
     //controller found
     const CONTROLLER = 'zim.controller';
 
     //action found
     const ACTION = 'zim.action';
-
-    //response created
-    const RESPONSE = 'zim.response';
 
     //response sent
     const TERMINATE = 'zim.terminate';
@@ -41,7 +34,7 @@ class Event
      */
     public static function fire($event, $payload = [], $halt = false)
     {
-        App::getInstance()->make(Dispatcher::class)->fire($event, $payload, $halt);
+        Zim::getInstance()->make('event')->fire($event, $payload, $halt);
     }
 
     /**
@@ -50,7 +43,7 @@ class Event
      */
     public static function listen($event, $payload = [])
     {
-        App::getInstance()->make(Dispatcher::class)->listen($event, $payload);
+        Zim::getInstance()->make('event')->listen($event, $payload);
     }
 
     /**
@@ -58,6 +51,6 @@ class Event
      */
     public static function on(callable $callback)
     {
-        App::getInstance()->make(Dispatcher::class)->on($callback);
+        Zim::getInstance()->make('event')->on($callback);
     }
 }

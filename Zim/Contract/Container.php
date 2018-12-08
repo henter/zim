@@ -110,22 +110,4 @@ interface Container
      * @return bool
      */
     public function resolved($abstract);
-
-    /**
-     * Register a new resolving callback.
-     *
-     * @param  \Closure|string  $abstract
-     * @param  \Closure|null  $callback
-     * @return void
-     */
-    public function resolving($abstract, Closure $callback = null);
-
-    /**
-     * Register a new after resolving callback.
-     *
-     * @param  \Closure|string  $abstract
-     * @param  \Closure|null  $callback
-     * @return void
-     */
-    public function afterResolving($abstract, Closure $callback = null);
 }

@@ -10,7 +10,8 @@ return [
     'name' => 'Zim Demo',
     'env' => 'dev',
 
+    //custom services to load
     'services' => [
-        \App\Service\Demo::class,
+        \App\Service\AppService::class,
     ],
 ];

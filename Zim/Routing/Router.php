@@ -8,10 +8,9 @@
 
 namespace Zim\Routing;
 
-use Zim\App;
+use Zim\Http\Exception\MethodNotAllowedException;
 use Zim\Http\Exception\NotFoundException;
 use Zim\Http\Request;
-use Zim\Http\Response;
 
 class Router
 {
@@ -21,35 +20,24 @@ class Router
     protected $routes;
 
     /**
-     * @var Matcher
+     * current method
+     *
+     * @var string
      */
-    protected $matcher;
+    protected $method;
 
     /**
-     * load from config
-     *
-     * @return RouteCollection
+     * current allowed methods for the request.
      */
-    public static function loadRoutes()
+    protected $allow = [];
+
+    /**
+     * Router constructor.
+     * @param RouteCollection $routes
+     */
+    public function __construct(RouteCollection $routes)
     {
-        $routes = new RouteCollection();
-
-        $configRoutes = App::config('routes');
-        foreach ($configRoutes as list($pattern, $to)) {
-            list($controller, $action) = explode('@', $to);
-            //TODO, route name
-            $name = $pattern;
-
-            $routes->add($name, new Route($pattern, ['_controller' => 'App\\Controller\\'.$controller.'Controller', '_action' => $action.'Action']));
-        }
-
-        return $routes;
-    }
-
-    public function __construct()
-    {
-        $this->routes = self::loadRoutes();
-        $this->matcher = new Matcher($this->routes);
+        $this->routes = $routes;
     }
 
     /**
@@ -58,8 +46,80 @@ class Router
      * @param  Request  $request
      * @return Route
      */
-    public function dispatch(Request $request)
+    public function matchRequest(Request $request) :Route
     {
-        return $this->matcher->matchRequest($request);
+        return $this->match($request->getPathInfo(), $request->getMethod());
+    }
+
+    /**
+     * @param $path
+     * @param string $method
+     * @return Route
+     */
+    public function match($path, $method = 'GET') :Route
+    {
+        $this->method = $method;
+        $this->allow = [];
+
+        if ($route = $this->matchCollection(rawurldecode($path), $this->routes)) {
+            return $route;
+        }
+
+        if ('/' === $path && !$this->allow) {
+            throw new NotFoundException();
+        }
+
+        throw 0 < \count($this->allow)
+            ? new MethodNotAllowedException(array_unique($this->allow))
+            : new NotFoundException(sprintf('No routes found for "%s".', $path));
+    }
+
+    /**
+     * Tries to match a URL with a set of routes.
+     *
+     * @param string          $path The path info to be parsed
+     * @param RouteCollection $routes   The set of routes
+     *
+     * @return Route|null
+     * @throws NotFoundException If the resource could not be found
+     * @throws MethodNotAllowedException If the resource was found but the request method is not allowed
+     */
+    protected function matchCollection($path, RouteCollection $routes)
+    {
+        foreach ($routes as $name => $route) {
+            $compiledRoute = $route->compile();
+            $staticPrefix = $compiledRoute->getStaticPrefix();
+
+            // check the static prefix of the URL first. Only use the more expensive preg_match when it matches
+            if ('' === $staticPrefix || 0 === strpos($path, $staticPrefix)) {
+                // no-op
+            } elseif ('/' === $staticPrefix[-1] && substr($staticPrefix, 0, -1) === $path) {
+                return null;
+            } elseif ('/' === $path[-1] && substr($path, 0, -1) === $staticPrefix) {
+                return null;
+            } else {
+                continue;
+            }
+
+            if (!preg_match($compiledRoute->getRegex(), $path, $matches)) {
+                continue;
+            }
+
+            if ($requiredMethods = $route->getMethods()) {
+                // HEAD and GET are equivalent as per RFC
+                if ('HEAD' === $method = $this->method) {
+                    $method = 'GET';
+                }
+
+                if (!\in_array($method, $requiredMethods)) {
+                    $this->allow = array_merge($this->allow, $requiredMethods);
+                    continue;
+                }
+            }
+
+            $route->setParameters(array_slice($matches, 1));
+            return $route;
+        }
+        return null;
     }
 }

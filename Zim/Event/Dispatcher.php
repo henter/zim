@@ -9,6 +9,7 @@
 namespace Zim\Event;
 
 use Zim\Container\BoundMethod;
+use Zim\Zim;
 
 class Dispatcher
 {

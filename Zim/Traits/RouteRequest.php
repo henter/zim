@@ -43,11 +43,11 @@ trait RouteRequest
     }
 
     /**
-     * @param Request|null $request
+     * @param Request $request
      * @return Response
      * @throws \Throwable
      */
-    public function handle(Request $request)
+    public function handle(Request $request) :Response
     {
         $this->instance('request', $request);
         $this->boot();
@@ -80,7 +80,7 @@ trait RouteRequest
     private function guessController($uri)
     {
         if (class_exists('App\\Controller\\'.ucfirst($uri).'Controller')) {
-            return ucfirst($uri).'Controller';
+            return ucfirst($uri);
         }
 
         $suffix = 'Controller.php';
@@ -88,7 +88,7 @@ trait RouteRequest
         foreach ($files as $file) {
             $name = rtrim(basename($file), $suffix);
             if (strtolower($name) == $uri) {
-                return $name.'Controller';
+                return $name;
             }
         }
         return false;
@@ -97,42 +97,56 @@ trait RouteRequest
     /**
      * default IndexController indexAction, same as yaf
      *
+     * rules:
+     * /            => Index@index
+     * /foo         => Foo@index or Index@foo
+     * /foo/bar     => Foo@bar
+     *
      * @param Request $request
-     * @return array
+     * @return array [Index, index]
      */
     private function getDefaultRoute(Request $request)
     {
-        $segments = explode('/', $request->getPathInfo());
-        if ($request->getPathInfo() == '/') {
-            $c = $a = 'Index';
-        } else if (count($segments) <= 2) {
-            [, $c] = $segments;
-            $a = 'index';
-        } else {
-            [, $c, $a] = $segments;
+        $segments = array_filter(explode('/', trim($request->getPathInfo(), '/')));
+        if (!$segments) {
+            return ['Index', 'index'];
         }
 
+        [$c, $a] = isset($segments[1]) ? $segments : [$segments[0], 'index'];
+
+        //如果 FooController 不存在，则尝试调度到 IndexController@fooAction
+        if (!$c = $this->guessController($c)) {
+            $c = 'Index';
+            $a = $segments[0];
+        }
         return [$c, $a];
     }
 
     /**
+     * 默认路由规则
+     * 即：
+     *      如果存在 FooController
+     *      /foo     => App\Controller\FooController::indexAction
+     *      /foo/bar => App\Controller\FooController::barAction
+     *      /foo/bar => App\Controller\FooController::$actions[bar]::execute
+     *
+     *      否则
+     *      /foo     => App\Controller\IndexController::fooAction
+     *      /foo/bar => App\Controller\IndexController::fooAction
+     *
      * @param Request $request
      * @return Response
      * @throws \Throwable
      */
     public function dispatchToDefault(Request $request) :Response
     {
+        //FooController index
         [$c, $a] = $this->getDefaultRoute($request);
-
-        //try controller
-        if (!$c = $this->guessController($c)) {
-            throw new NotFoundException('path not found');
-        }
 
         /**
          * @var Controller $controller
          */
-        $controller = $this->make('App\\Controller\\'.$c);
+        $controller = $this->make('App\\Controller\\'.$c.'Controller');
 
         //try controller action ?
         if ($method = $controller->getAction($a)) {
@@ -154,7 +168,7 @@ trait RouteRequest
      */
     public function dispatchToRouter(Request $request) :Response
     {
-        $route = $this->router->dispatch($request);
+        $route = $this->router->matchRequest($request);
         $callable = [$this->make($route->getDefault('_controller')), $route->getDefault('_action')];
 
         $return = $this->call($callable, $route->getParameters());

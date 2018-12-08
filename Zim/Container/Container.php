@@ -96,20 +96,6 @@ class Container implements ContainerContract
     protected $reboundCallbacks = [];
 
     /**
-     * All of the global resolving callbacks.
-     *
-     * @var array
-     */
-    protected $globalResolvingCallbacks = [];
-
-    /**
-     * All of the global after resolving callbacks.
-     *
-     * @var array
-     */
-    protected $globalAfterResolvingCallbacks = [];
-
-    /**
      * All of the resolving callbacks by class type.
      *
      * @var array
@@ -247,7 +233,6 @@ class Container implements ContainerContract
      */
     protected function getClosure($abstract, $concrete)
     {
-
         return function ($container, $parameters = []) use ($abstract, $concrete) {
             if ($abstract == $concrete) {
                 return $container->build($concrete);
@@ -598,8 +583,6 @@ class Container implements ContainerContract
             $this->instances[$abstract] = $object;
         }
 
-        $this->fireResolvingCallbacks($abstract, $object);
-
         // Before returning, we will also set the resolved flag to "true" and pop off
         // the parameter overrides for this build. After those two things are done
         // we will be ready to return back the fully constructed class instance.
@@ -727,9 +710,7 @@ class Container implements ContainerContract
         // Once we have all the constructor's parameters we can create each of the
         // dependency instances and then use the reflection instances to make a
         // new instance of this class, injecting the created dependencies in.
-        $instances = $this->resolveDependencies(
-            $dependencies
-        );
+        $instances = $this->resolveDependencies($dependencies);
 
         array_pop($this->buildStack);
 
@@ -775,9 +756,7 @@ class Container implements ContainerContract
      */
     protected function hasParameterOverride($dependency)
     {
-        return array_key_exists(
-            $dependency->name, $this->getLastParameterOverride()
-        );
+        return array_key_exists($dependency->name, $this->getLastParameterOverride());
     }
 
     /**
@@ -885,80 +864,6 @@ class Container implements ContainerContract
     }
 
     /**
-     * Register a new resolving callback.
-     *
-     * @param  \Closure|string  $abstract
-     * @param  \Closure|null  $callback
-     * @return void
-     */
-    public function resolving($abstract, Closure $callback = null)
-    {
-        if (is_string($abstract)) {
-            $abstract = $this->getAlias($abstract);
-        }
-
-        if (is_null($callback) && $abstract instanceof Closure) {
-            $this->globalResolvingCallbacks[] = $abstract;
-        } else {
-            $this->resolvingCallbacks[$abstract][] = $callback;
-        }
-    }
-
-    /**
-     * Register a new after resolving callback for all types.
-     *
-     * @param  \Closure|string  $abstract
-     * @param  \Closure|null  $callback
-     * @return void
-     */
-    public function afterResolving($abstract, Closure $callback = null)
-    {
-        if (is_string($abstract)) {
-            $abstract = $this->getAlias($abstract);
-        }
-
-        if ($abstract instanceof Closure && is_null($callback)) {
-            $this->globalAfterResolvingCallbacks[] = $abstract;
-        } else {
-            $this->afterResolvingCallbacks[$abstract][] = $callback;
-        }
-    }
-
-    /**
-     * Fire all of the resolving callbacks.
-     *
-     * @param  string  $abstract
-     * @param  mixed   $object
-     * @return void
-     */
-    protected function fireResolvingCallbacks($abstract, $object)
-    {
-        $this->fireCallbackArray($object, $this->globalResolvingCallbacks);
-
-        $this->fireCallbackArray(
-            $object, $this->getCallbacksForType($abstract, $object, $this->resolvingCallbacks)
-        );
-
-        $this->fireAfterResolvingCallbacks($abstract, $object);
-    }
-
-    /**
-     * Fire all of the after resolving callbacks.
-     *
-     * @param  string  $abstract
-     * @param  mixed   $object
-     * @return void
-     */
-    protected function fireAfterResolvingCallbacks($abstract, $object)
-    {
-        $this->fireCallbackArray($object, $this->globalAfterResolvingCallbacks);
-
-        $this->fireCallbackArray(
-            $object, $this->getCallbacksForType($abstract, $object, $this->afterResolvingCallbacks)
-        );
-    }
-
-    /**
      * Get all callbacks for a given type.
      *
      * @param  string  $abstract
@@ -978,20 +883,6 @@ class Container implements ContainerContract
         }
 
         return $results;
-    }
-
-    /**
-     * Fire an array of callbacks with an object.
-     *
-     * @param  mixed  $object
-     * @param  array  $callbacks
-     * @return void
-     */
-    protected function fireCallbackArray($object, array $callbacks)
-    {
-        foreach ($callbacks as $callback) {
-            $callback($object, $this);
-        }
     }
 
     /**

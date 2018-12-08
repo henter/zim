@@ -40,8 +40,13 @@ class IndexController extends Controller
         return new JsonResponse(['test' => 'ok', 'config' => $config->all()]);
     }
 
-    public function test_methodAction($page, $x, Config $config)
+    public function test_methodAction(Config $config)
     {
         return 'test method';
+    }
+
+    public function xxxAction()
+    {
+        return new JsonResponse(['xx' => 'xxxxxxxxx']);
     }
 }

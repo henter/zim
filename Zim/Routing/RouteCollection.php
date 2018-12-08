@@ -29,11 +29,6 @@ class RouteCollection implements \IteratorAggregate, \Countable
      */
     private $routes = [];
 
-    /**
-     * @var array
-     */
-    private $resources = [];
-
     public function __clone()
     {
         foreach ($this->routes as $name => $route) {
@@ -124,10 +119,6 @@ class RouteCollection implements \IteratorAggregate, \Countable
             unset($this->routes[$name]);
             $this->routes[$name] = $route;
         }
-
-        foreach ($collection->getResources() as $resource) {
-            $this->addResource($resource);
-        }
     }
 
     /**
@@ -167,36 +158,6 @@ class RouteCollection implements \IteratorAggregate, \Countable
         }
 
         $this->routes = $prefixedRoutes;
-    }
-
-    /**
-     * Sets the host pattern on all routes.
-     *
-     * @param string $pattern      The pattern
-     * @param array  $defaults     An array of default values
-     * @param array  $requirements An array of requirements
-     */
-    public function setHost($pattern, array $defaults = [], array $requirements = [])
-    {
-        foreach ($this->routes as $route) {
-            $route->setHost($pattern);
-            $route->addDefaults($defaults);
-            $route->addRequirements($requirements);
-        }
-    }
-
-    /**
-     * Sets a condition on all routes.
-     *
-     * Existing conditions will be overridden.
-     *
-     * @param string $condition The condition
-     */
-    public function setCondition($condition)
-    {
-        foreach ($this->routes as $route) {
-            $route->setCondition($condition);
-        }
     }
 
     /**
@@ -248,18 +209,6 @@ class RouteCollection implements \IteratorAggregate, \Countable
     }
 
     /**
-     * Sets the schemes (e.g. 'https') all child routes are restricted to.
-     *
-     * @param string|string[] $schemes The scheme or an array of schemes
-     */
-    public function setSchemes($schemes)
-    {
-        foreach ($this->routes as $route) {
-            $route->setSchemes($schemes);
-        }
-    }
-
-    /**
      * Sets the HTTP methods (e.g. 'POST') all child routes are restricted to.
      *
      * @param string|string[] $methods The method or an array of methods
@@ -271,26 +220,4 @@ class RouteCollection implements \IteratorAggregate, \Countable
         }
     }
 
-    /**
-     * Returns an array of resources loaded to build this collection.
-     *
-     * @return array An array of resources
-     */
-    public function getResources()
-    {
-        return array_values($this->resources);
-    }
-
-    /**
-     * Adds a resource for this collection. If the resource already exists
-     * it is not added.
-     */
-    public function addResource($resource)
-    {
-        $key = (string) $resource;
-
-        if (!isset($this->resources[$key])) {
-            $this->resources[$key] = $resource;
-        }
-    }
 }

@@ -2,24 +2,24 @@
 
 namespace Zim\Service;
 
-use Zim\App;
+use Zim\Zim;
 
 abstract class Service
 {
     /**
-     * @var App
+     * @var Zim
      */
-    protected $app;
+    protected $zim;
 
     /**
      * Create a new service provider instance.
      *
-     * @param  App $app
+     * @param  Zim $zim
      * @return void
      */
-    public function __construct(App $app)
+    public function __construct(Zim $zim)
     {
-        $this->app = $app;
+        $this->zim = $zim;
     }
 
     //execute for every request

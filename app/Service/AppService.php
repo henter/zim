@@ -15,13 +15,9 @@ use Zim\Http\JsonResponse;
 use Zim\Http\Response;
 use Zim\Service\Service;
 
-class Demo extends Service
+class AppService extends Service
 {
     public function boot()
-    {
-    }
-
-    public function register()
     {
         $events = [
             Event::ROUTE,
@@ -47,12 +43,15 @@ class Demo extends Service
         });
 
         Event::on(function(RequestEvent $e) {
-            $resp = new JsonResponse('test on event');
+            $resp = new JsonResponse(['code' => 0, 'data' => 'test on event']);
             //$e->setResponse($resp);
             //return 222;
         });
 
+    }
 
+    public function register()
+    {
     }
 
 }
