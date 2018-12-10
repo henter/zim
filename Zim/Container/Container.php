@@ -95,20 +95,6 @@ class Container
     protected $reboundCallbacks = [];
 
     /**
-     * All of the resolving callbacks by class type.
-     *
-     * @var array
-     */
-    protected $resolvingCallbacks = [];
-
-    /**
-     * All of the after resolving callbacks by class type.
-     *
-     * @var array
-     */
-    protected $afterResolvingCallbacks = [];
-
-    /**
      * Define a contextual binding.
      *
      * @param  array|string  $concrete
@@ -466,20 +452,6 @@ class Container
     }
 
     /**
-     * Wrap the given closure such that its dependencies will be injected when executed.
-     *
-     * @param  \Closure  $callback
-     * @param  array  $parameters
-     * @return \Closure
-     */
-    public function wrap(Closure $callback, array $parameters = [])
-    {
-        return function () use ($callback, $parameters) {
-            return $this->call($callback, $parameters);
-        };
-    }
-
-    /**
      * Call the given Closure / class@method and inject its dependencies.
      *
      * @param  callable|string  $callback
@@ -490,19 +462,6 @@ class Container
     public function call($callback, array $parameters = [], $defaultMethod = null)
     {
         return BoundMethod::call($this, $callback, $parameters, $defaultMethod);
-    }
-
-    /**
-     * Get a closure to resolve the given type from the container.
-     *
-     * @param  string  $abstract
-     * @return \Closure
-     */
-    public function factory($abstract)
-    {
-        return function () use ($abstract) {
-            return $this->make($abstract);
-        };
     }
 
     /**

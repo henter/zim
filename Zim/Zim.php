@@ -57,6 +57,11 @@ class Zim extends Container
     /**
      * The base path of the application installation.
      *
+     * /           => basePath
+     * /app        => APP_PATH
+     * /config
+     * /vendor
+     *
      * @var string
      */
     protected $basePath;
@@ -264,7 +269,7 @@ class Zim extends Container
 
             if (file_exists($appConfigDir)) {
                 return $appConfigDir;
-            } elseif (file_exists($path = __DIR__.'/../config/')) {
+            } elseif (file_exists($path = $this->basePath('../config/'))) {
                 return $path;
             }
         } else {
@@ -272,7 +277,7 @@ class Zim extends Container
 
             if (file_exists($appConfigPath)) {
                 return $appConfigPath;
-            } elseif (file_exists($path = __DIR__.'/../config/'.$name.'.php')) {
+            } elseif (file_exists($path = $this->basePath('../config/'.$name.'.php'))) {
                 return $path;
             }
         }
