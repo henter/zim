@@ -8,39 +8,24 @@
 
 namespace Zim\Traits;
 
-use Zim\Event\Event;
+use Zim\Event\DispatchEvent;
 use Zim\Event\RequestEvent;
 use Zim\Event\ResponseEvent;
+use Zim\Event\TerminateEvent;
 use Zim\Http\Exception\NotFoundException;
 use Zim\Http\Exception\ResponseException;
 use Zim\Http\Request;
 use Zim\Http\Response;
 use Zim\Http\Controller;
 use Zim\Routing\Router;
+use Zim\Support\Str;
 
-trait RouteRequest
+trait Handler
 {
     /**
      * @var Router
      */
     protected $router;
-
-    /**
-     * @param null $request
-     * @throws \Throwable
-     */
-    public function run($request = null)
-    {
-        $request = $request ?: Request::createFromGlobals();
-        $response = $this->handle($request);
-        $response->send();
-        $this->terminate($request, $response);
-    }
-
-    public function terminate(Request $request, Response $response)
-    {
-        $this->fire(Event::TERMINATE);
-    }
 
     /**
      * @param Request $request
@@ -63,7 +48,6 @@ trait RouteRequest
         } catch (NotFoundException $e) {
             $response = $this->dispatchToDefault($request);
         } catch (\Throwable $e) {
-            //return $this->errorResponse('exception '.$e->getMessage())->prepare($request);
             throw $e;
         }
 
@@ -86,8 +70,8 @@ trait RouteRequest
         $suffix = 'Controller.php';
         $files = glob(APP_PATH. '/Controller/*'.$suffix);
         foreach ($files as $file) {
-            $name = rtrim(basename($file), $suffix);
-            if (strtolower($name) == $uri) {
+            $name = Str::replaceLast($suffix, '', basename($file));
+            if ($uri === strtolower($name)) {
                 return $name;
             }
         }
@@ -159,7 +143,7 @@ trait RouteRequest
             $callable = [$this->make($actionClass), 'execute'];
         }
 
-        return $this->toResponse($this->call($callable));
+        return $this->doDispatch($request, $callable);
     }
 
     /**
@@ -171,8 +155,25 @@ trait RouteRequest
         $route = $this->router->matchRequest($request);
         $callable = [$this->make($route->getDefault('_controller')), $route->getDefault('_action')];
 
-        $return = $this->call($callable, $route->getParameters());
-        return $this->toResponse($return);
+        return $this->doDispatch($request, $callable, $route->getParameters());
+    }
+
+    /**
+     * @param Request $request
+     * @param callable $callable
+     * @param array $params
+     * @return Response
+     */
+    private function doDispatch(Request $request, callable $callable, $params = []) :Response
+    {
+        $request->attributes->set('callable', $callable);
+        $e = new DispatchEvent($request);
+        $this->fire($e);
+        if ($resp = $e->getResponse()) {
+            return $resp->prepare($request);
+        }
+
+        return $this->toResponse($this->call($callable, $params));
     }
 
     /**
@@ -183,7 +184,7 @@ trait RouteRequest
     {
         if ($resp instanceof Response) {
             $response = $resp;
-        } else if (is_array($resp) || is_scalar($resp)) {
+        } else if (is_array($resp) || is_scalar($resp) || is_null($resp)) {
             $response = new Response($resp);
         } else {
             throw new ResponseException(500, 'invalid response');
@@ -192,11 +193,14 @@ trait RouteRequest
     }
 
     /**
-     * @param $msg
-     * @return Response
+     * will not return to fastcgi
+     *
+     * @param Request $request
+     * @param Response $response
      */
-    public function errorResponse($msg)
+    public function terminate(Request $request, Response $response)
     {
-        return new Response($msg);
+        $this->fire(new TerminateEvent($request, $response));
     }
+
 }

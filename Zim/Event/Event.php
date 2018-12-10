@@ -18,15 +18,6 @@ class Event
     //before route match
     const ROUTE = 'zim.route';
 
-    //controller found
-    const CONTROLLER = 'zim.controller';
-
-    //action found
-    const ACTION = 'zim.action';
-
-    //response sent
-    const TERMINATE = 'zim.terminate';
-
     /**
      * @param $event
      * @param array $payload

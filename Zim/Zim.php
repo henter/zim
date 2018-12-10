@@ -8,6 +8,7 @@
 namespace Zim;
 
 use Zim\Container\Container;
+use Zim\Contract\Request;
 use Zim\Event\Event;
 use Zim\Routing\Route;
 use Zim\Routing\RouteCollection;
@@ -18,7 +19,7 @@ use Zim\Debug\ExceptionHandler;
 use Zim\Event\Dispatcher;
 use Zim\Routing\Router;
 use Zim\Traits\AppHelper;
-use Zim\Traits\RouteRequest;
+use Zim\Traits\Handler;
 use Zim\Config\Config;
 use Zim\Contract\Config as ConfigContract;
 
@@ -31,7 +32,7 @@ class Zim extends Container
     const VERSION = 'Zim (1.0.0)';
 
     use AppHelper;
-    use RouteRequest;
+    use Handler;
 
     /**
      * All of the loaded configuration files.
@@ -117,6 +118,8 @@ class Zim extends Container
             ConfigContract::class => 'config',
             Event::class => 'event',
             Dispatcher::class => 'event',
+            Request::class => 'request',
+            \Zim\Http\Request::class => 'request',
         ];
     }
 

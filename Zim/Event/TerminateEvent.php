@@ -9,7 +9,7 @@
 namespace Zim\Event;
 
 
-class ResponseEvent extends HttpEvent
+class TerminateEvent extends HttpEvent
 {
 
 }

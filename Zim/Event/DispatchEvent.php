@@ -8,8 +8,7 @@
 
 namespace Zim\Event;
 
-
-class ResponseEvent extends HttpEvent
+class DispatchEvent extends HttpEvent
 {
 
 }

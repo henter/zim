@@ -11,5 +11,9 @@
  */
 $zim = require __DIR__.'/../app/bootstrap.php';
 
-$zim->run();
+$request = \Zim\Http\Request::createFromGlobals();
+$response = $zim->handle($request);
+$response->send();
+$this->terminate($request, $response);
+
 
