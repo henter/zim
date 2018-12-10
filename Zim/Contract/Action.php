@@ -6,7 +6,7 @@
  *
  */
 
-namespace Zim\Contract\Http;
+namespace Zim\Contract;
 
 interface Action
 {

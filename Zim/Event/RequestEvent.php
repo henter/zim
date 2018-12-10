@@ -8,8 +8,8 @@
 
 namespace Zim\Event;
 
-use Zim\Contract\Http\Request;
-use Zim\Contract\Http\Response;
+use Zim\Contract\Request;
+use Zim\Contract\Response;
 
 class RequestEvent
 {

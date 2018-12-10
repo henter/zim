@@ -16,7 +16,7 @@ trait AppHelper
     /**
      * @return Dispatcher
      */
-    public function getEvent()
+    private function getEvent()
     {
         return $this->make('event');
     }

@@ -9,9 +9,7 @@
 namespace App\Controller;
 
 use App\Action\Index\PageAction;
-use Zim\Contract\Container as ContainerContract;
 use Zim\Contract\Config;
-use Zim\Event\Event;
 use Zim\Http\JsonResponse;
 
 class IndexController extends Controller
@@ -25,12 +23,12 @@ class IndexController extends Controller
         //var_dump('test inject config ', $config);
     }
 
-    public function indexAction($x = '')
+    public function indexAction($x = 'xx')
     {
-        return 'hello zim '.$x;
+        return \Zim\Zim::config('app.name').' '.$x;
     }
 
-    public function postAction($page = 2, $x = 'xxx', ContainerContract $e, Config $config)
+    public function postAction($page = 2, $x = 'xxx', Config $config)
     {
         return 'test page '.$page.' '.$x ;
     }

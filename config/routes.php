@@ -9,7 +9,7 @@
 //TODO, route sugar function
 
 return [
-    //['/', 'Index@index'],
+    ['/', 'Index@index'],
     ['/test', 'Index@test'],
     ['/post/{page<\d+>?1}', 'Index@post'],
     ['/foo', 'Foo@index'],

@@ -8,7 +8,7 @@
 
 namespace Zim\Http;
 
-class Action extends Controller implements \Zim\Contract\Http\Action
+class Action extends Controller implements \Zim\Contract\Action
 {
     protected static $method = 'GET';
 

@@ -8,8 +8,8 @@
 
 namespace Zim\Http;
 
-use Zim\Contract\Http\Request as RequestContract;
-use Zim\Contract\Http\Response as ResponseContract;
+use Zim\Contract\Request as RequestContract;
+use Zim\Contract\Response as ResponseContract;
 
 /**
  * Response represents an HTTP response.

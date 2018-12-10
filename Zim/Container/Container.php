@@ -7,9 +7,8 @@ use Exception;
 use LogicException;
 use ReflectionClass;
 use ReflectionParameter;
-use Zim\Contract\Container as ContainerContract;
 
-class Container implements ContainerContract
+class Container
 {
     /**
      * The current globally available container (if any).
@@ -1007,10 +1006,10 @@ class Container implements ContainerContract
     /**
      * Set the shared instance of the container.
      *
-     * @param  ContainerContract|null  $container
-     * @return ContainerContract|static
+     * @param  Container|null  $container
+     * @return Container|static
      */
-    public static function setInstance(ContainerContract $container = null)
+    public static function setInstance(Container $container = null)
     {
         return static::$instance = $container;
     }

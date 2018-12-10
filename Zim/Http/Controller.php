@@ -8,22 +8,15 @@
 
 namespace Zim\Http;
 
-use Zim\Zim;
+use Zim\Traits\InjectContainer;
 
 class Controller
 {
+    use InjectContainer;
+
     protected static $method;
 
     protected $actions = [];
-
-    /**
-     * @param $make
-     * @return mixed
-     */
-    public function app($make)
-    {
-        return Zim::app($make);
-    }
 
     /**
      * @return Request

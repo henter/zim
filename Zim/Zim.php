@@ -21,7 +21,6 @@ use Zim\Traits\AppHelper;
 use Zim\Traits\RouteRequest;
 use Zim\Config\Config;
 use Zim\Contract\Config as ConfigContract;
-use Zim\Contract\Container as ContainerContract;
 
 /**
  * Class Zim
@@ -66,11 +65,11 @@ class Zim extends Container
     {
         $this->basePath = dirname(APP_PATH);
 
+        $this->registerErrorHandling();
         $this->bootstrapContainer();
         $this->bootstrapConfig();
         $this->bootstrapRouter();
 
-        $this->registerErrorHandling();
         $this->registerServices();
     }
 
@@ -78,7 +77,7 @@ class Zim extends Container
     {
         $routes = new RouteCollection();
 
-        $configRoutes = self::config('routes');
+        $configRoutes = self::config('routes') ?: [];
         foreach ($configRoutes as list($pattern, $to)) {
             list($controller, $action) = explode('@', $to);
             //TODO, route name
@@ -109,7 +108,6 @@ class Zim extends Container
         $this->aliases = [
             Zim::class => 'zim',
             Container::class => 'zim',
-            ContainerContract::class => 'zim',
             Config::class => 'config',
             ConfigContract::class => 'config',
             Event::class => 'event',
@@ -119,7 +117,7 @@ class Zim extends Container
 
     protected function bootstrapConfig()
     {
-        $this->configure('zim');
+        $this->configure('app');
         $this->configure('routes');
     }
 
@@ -129,7 +127,7 @@ class Zim extends Container
         $this->register(LogService::class);
 
         //services from config
-        $services = self::config('zim.services');
+        $services = self::config('app.services') ?: [];
         foreach ($services as $service) {
             $this->register($service);
         }
