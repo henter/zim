@@ -40,6 +40,60 @@ class Router
         $this->routes = $routes;
     }
 
+    public function getRoutes()
+    {
+        return $this->routes;
+    }
+
+    public function merge(RouteCollection $collection = null)
+    {
+        if (!$collection) {
+            return;
+        }
+        foreach ($collection as $name => $route) {
+            $this->routes->add($name, $route);
+        }
+    }
+
+    /**
+     * Add a route to the underlying route collection.
+     *
+     * @param  array|string  $methods
+     * @param  string  $uri
+     * @param  \Closure|array|string|callable|null  $info
+     * @return Route
+     */
+    public function addRoute($methods, $uri, $info)
+    {
+        $name = sha1(\json_encode($methods).$uri);
+        return $this->routes->add($name, $this->createRoute($methods, $uri, $info));
+    }
+
+    /**
+     * Create a new route instance.
+     *
+     * @param  array|string  $methods
+     * @param  string  $uri
+     * @param  mixed  $info
+     * @return Route
+     */
+    protected function createRoute($methods, $uri, $info)
+    {
+        if (strpos($info, '@')) {
+            list($controller, $action) = explode('@', $info);
+            $defaults = [
+                '_controller' => 'App\\Controller\\' . $controller . 'Controller',
+                '_action' => $action . 'Action',
+            ];
+        } else if (is_callable($info)) {
+            $defaults = [
+                '_callable' => $info
+            ];
+        }
+
+        return new Route($uri, $defaults, $methods);
+    }
+
     /**
      * Dispatch the request to the application.
      *
@@ -61,7 +115,7 @@ class Router
         $this->method = $method;
         $this->allow = [];
 
-        if ($route = $this->matchCollection(rawurldecode($path), $this->routes)) {
+        if ($route = $this->matchCollection(rawurldecode($path))) {
             return $route;
         }
 
@@ -78,15 +132,14 @@ class Router
      * Tries to match a URL with a set of routes.
      *
      * @param string          $path The path info to be parsed
-     * @param RouteCollection $routes   The set of routes
      *
      * @return Route|null
      * @throws NotFoundException If the resource could not be found
      * @throws MethodNotAllowedException If the resource was found but the request method is not allowed
      */
-    protected function matchCollection($path, RouteCollection $routes)
+    protected function matchCollection($path)
     {
-        foreach ($routes as $name => $route) {
+        foreach ($this->routes as $name => $route) {
             $compiledRoute = $route->compile();
             $staticPrefix = $compiledRoute->getStaticPrefix();
 

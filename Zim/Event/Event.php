@@ -15,9 +15,6 @@ class Event
     //uncaught exception
     const EXCEPTION = 'zim.exception';
 
-    //before route match
-    const ROUTE = 'zim.route';
-
     /**
      * @param $event
      * @param array $payload

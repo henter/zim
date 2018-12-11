@@ -88,13 +88,6 @@ class Container
     public $contextual = [];
 
     /**
-     * All of the registered rebound callbacks.
-     *
-     * @var array
-     */
-    protected $reboundCallbacks = [];
-
-    /**
      * Define a contextual binding.
      *
      * @param  array|string  $concrete
@@ -200,13 +193,6 @@ class Container
         }
 
         $this->bindings[$abstract] = compact('concrete', 'shared');
-
-        // If the abstract type was already resolved in this container we'll fire the
-        // rebound listener so that any objects which have already gotten resolved
-        // can have their copy of the object updated via the listener callbacks.
-        if ($this->resolved($abstract)) {
-            $this->rebound($abstract);
-        }
     }
 
     /**
@@ -317,14 +303,8 @@ class Container
 
         if (isset($this->instances[$abstract])) {
             $this->instances[$abstract] = $closure($this->instances[$abstract], $this);
-
-            $this->rebound($abstract);
         } else {
             $this->extenders[$abstract][] = $closure;
-
-            if ($this->resolved($abstract)) {
-                $this->rebound($abstract);
-            }
         }
     }
 
@@ -339,18 +319,8 @@ class Container
     {
         $this->removeAbstractAlias($abstract);
 
-        $isBound = $this->bound($abstract);
-
         unset($this->aliases[$abstract]);
-
-        // We'll check to determine if this type has been bound before, and if it has
-        // we will fire the rebound callbacks registered with the container and it
-        // can be updated with consuming classes that have gotten resolved here.
         $this->instances[$abstract] = $instance;
-
-        if ($isBound) {
-            $this->rebound($abstract);
-        }
 
         return $instance;
     }
@@ -388,67 +358,6 @@ class Container
         $this->aliases[$alias] = $abstract;
 
         $this->abstractAliases[$abstract][] = $alias;
-    }
-
-    /**
-     * Bind a new callback to an abstract's rebind event.
-     *
-     * @param  string    $abstract
-     * @param  \Closure  $callback
-     * @return mixed
-     */
-    public function rebinding($abstract, Closure $callback)
-    {
-        $this->reboundCallbacks[$abstract = $this->getAlias($abstract)][] = $callback;
-
-        if ($this->bound($abstract)) {
-            return $this->make($abstract);
-        }
-    }
-
-    /**
-     * Refresh an instance on the given target and method.
-     *
-     * @param  string  $abstract
-     * @param  mixed   $target
-     * @param  string  $method
-     * @return mixed
-     */
-    public function refresh($abstract, $target, $method)
-    {
-        return $this->rebinding($abstract, function ($app, $instance) use ($target, $method) {
-            $target->{$method}($instance);
-        });
-    }
-
-    /**
-     * Fire the "rebound" callbacks for the given abstract type.
-     *
-     * @param  string  $abstract
-     * @return void
-     */
-    protected function rebound($abstract)
-    {
-        $instance = $this->make($abstract);
-
-        foreach ($this->getReboundCallbacks($abstract) as $callback) {
-            call_user_func($callback, $this, $instance);
-        }
-    }
-
-    /**
-     * Get the rebound callbacks for a given type.
-     *
-     * @param  string  $abstract
-     * @return array
-     */
-    protected function getReboundCallbacks($abstract)
-    {
-        if (isset($this->reboundCallbacks[$abstract])) {
-            return $this->reboundCallbacks[$abstract];
-        }
-
-        return [];
     }
 
     /**

@@ -23,10 +23,14 @@ abstract class Service
     }
 
     //execute for every request
-    abstract public function boot();
+    public function boot()
+    {
+    }
 
     //execute once
-    abstract public function register();
+    public function register()
+    {
+    }
 
     /**
      * TODO, deferred register

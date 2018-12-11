@@ -28,7 +28,6 @@ class ExceptionHandler
 {
     private $debug;
     private $charset;
-    private $handler;
 
     public function __construct(bool $debug = true, string $charset = null)
     {
@@ -48,29 +47,8 @@ class ExceptionHandler
     public static function register($debug = true, $charset = null)
     {
         $handler = new static($debug, $charset);
-
-        $prev = set_exception_handler(array($handler, 'handle'));
-        if (\is_array($prev) && $prev[0] instanceof ErrorHandler) {
-            restore_exception_handler();
-            $prev[0]->setExceptionHandler(array($handler, 'handle'));
-        }
-
+        set_exception_handler(array($handler, 'handle'));
         return $handler;
-    }
-
-    /**
-     * Sets a user exception handler.
-     *
-     * @param callable $handler An handler that will be called on Exception
-     *
-     * @return callable|null The previous exception handler if any
-     */
-    public function setHandler(callable $handler = null)
-    {
-        $old = $this->handler;
-        $this->handler = $handler;
-
-        return $old;
     }
 
     /**
@@ -83,11 +61,7 @@ class ExceptionHandler
      */
     public function handle(\Exception $exception)
     {
-        try {
-            \call_user_func($this->handler, $exception);
-        } catch (\Exception $e) {
-            $this->sendPhpResponse($exception);
-        }
+        $this->sendPhpResponse($exception);
     }
 
     /**
@@ -111,8 +85,7 @@ class ExceptionHandler
             }
             header('Content-Type: text/html; charset='.$this->charset);
         }
-
-        echo $this->decorate($this->getContent($exception), $this->getStylesheet($exception));
+        echo $this->decorate($this->getContent($exception), $this->getStylesheet());
     }
 
     /**
@@ -202,16 +175,8 @@ EOF;
      *
      * @return string The stylesheet as a string
      */
-    public function getStylesheet(FlattenException $exception)
+    public function getStylesheet()
     {
-        if (!$this->debug) {
-            return <<<'EOF'
-                body { background-color: #fff; color: #222; font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; }
-                .container { margin: 30px; max-width: 600px; }
-                h1 { color: #dc3545; font-size: 24px; }
-EOF;
-        }
-
         return <<<'EOF'
             body { background-color: #F9F9F9; color: #222; font: 14px/1.4 Helvetica, Arial, sans-serif; margin: 0; padding-bottom: 45px; }
 

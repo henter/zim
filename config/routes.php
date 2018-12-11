@@ -8,11 +8,16 @@
 
 //TODO, route sugar function
 
+use \Zim\Routing\Registrar;
+
+Registrar::get('/test_reg', 'Index@test');
+Registrar::post('/xx', 'Index@test');
+
 return [
-    ['/', 'Index@index'],
-    ['/test', 'Index@test'],
-    ['/post/{page<\d+>?1}', 'Index@post'],
-    ['/foo', 'Foo@index'],
-    ['/foo/test', 'Foo@foo'],
+    '/'                   => 'Index@index',
+    '/test'               => 'Index@test',
+    '/post/{page<\d+>?1}' => 'Index@post',
+    '/foo'                => 'Foo@index',
+    '/foo/test'           => 'Foo@foo',
 ];
 

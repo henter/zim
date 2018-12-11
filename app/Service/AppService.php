@@ -20,8 +20,6 @@ class AppService extends Service
     public function boot()
     {
         $events = [
-            Event::ROUTE,
-            Event::TERMINATE,
             RequestEvent::class,
             ResponseEvent::class,
         ];

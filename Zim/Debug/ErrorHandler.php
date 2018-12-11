@@ -56,7 +56,6 @@ class ErrorHandler
 
     private $thrownErrors = 0x1FFF; // E_ALL - E_DEPRECATED - E_USER_DEPRECATED
     private $screamedErrors = 0x55; // E_ERROR + E_CORE_ERROR + E_COMPILE_ERROR + E_PARSE
-    private $loggedErrors = 0;
     private $traceReflector;
     private $exceptionHandler;
 
@@ -75,7 +74,7 @@ class ErrorHandler
 
         if (null === $prev = set_error_handler(array($handler, 'handleError'))) {
             restore_error_handler();
-            set_error_handler(array($handler, 'handleError'), $handler->thrownErrors | $handler->loggedErrors);
+            set_error_handler(array($handler, 'handleError'), $handler->thrownErrors);
         }
 
         $prev = set_exception_handler(array($handler, 'handleException'));
@@ -135,13 +134,13 @@ class ErrorHandler
      * @param $exception
      * @param array|null $error
      * @return mixed
-     * @throws FatalThrowableError
+     * @throws FatalErrorException
      * @throws \Throwable
      */
     public function handleException($exception, array $error = null)
     {
         if (!$exception instanceof \Exception) {
-            $exception = new FatalThrowableError($exception);
+            $exception = new FatalErrorException($exception);
         }
         $handlerException = null;
 

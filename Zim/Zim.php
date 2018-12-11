@@ -5,11 +5,13 @@
  * Time: 2018-11-24 19:29
  *
  */
+
 namespace Zim;
 
 use Zim\Container\Container;
 use Zim\Contract\Request;
 use Zim\Event\Event;
+use Zim\Routing\Registrar;
 use Zim\Routing\Route;
 use Zim\Routing\RouteCollection;
 use Zim\Service\LogService;
@@ -81,21 +83,15 @@ class Zim extends Container
 
     protected function bootstrapRouter()
     {
-        $routes = new RouteCollection();
+        $this->router = new Router(new RouteCollection());
+        $this->instance('router', $this->router);
+
+        $this->router->merge(Registrar::getRoutes());
 
         $configRoutes = self::config('routes') ?: [];
-        foreach ($configRoutes as list($pattern, $to)) {
-            list($controller, $action) = explode('@', $to);
-            //TODO, route name
-            $name = $pattern;
-
-            $routes->add($name, new Route($pattern, [
-                '_controller' => 'App\\Controller\\'.$controller.'Controller',
-                '_action' => $action.'Action'
-            ]));
+        foreach ($configRoutes as $pattern => $to) {
+            $this->router->addRoute([], $pattern, $to);
         }
-
-        $this->router = new Router($routes);
     }
 
     /**
@@ -112,13 +108,14 @@ class Zim extends Container
         $this->instance('env', $this->env());
 
         $this->aliases = [
-            Zim::class => 'zim',
-            Container::class => 'zim',
-            Config::class => 'config',
-            ConfigContract::class => 'config',
-            Event::class => 'event',
-            Dispatcher::class => 'event',
-            Request::class => 'request',
+            Zim::class               => 'zim',
+            Container::class         => 'zim',
+            Config::class            => 'config',
+            ConfigContract::class    => 'config',
+            Event::class             => 'event',
+            Dispatcher::class        => 'event',
+            Request::class           => 'request',
+            Router::class            => 'router',
             \Zim\Http\Request::class => 'request',
         ];
     }
@@ -158,7 +155,7 @@ class Zim extends Container
      */
     public function register($service)
     {
-        if (! $service instanceof Service) {
+        if (!$service instanceof Service) {
             $service = new $service($this);
         }
 
@@ -220,19 +217,19 @@ class Zim extends Container
     /**
      * Get the base path for the application.
      *
-     * @param  string|null  $path
+     * @param  string|null $path
      * @return string
      */
     public function basePath($path = null)
     {
         if (isset($this->basePath)) {
-            return $this->basePath.($path ? '/'.$path : $path);
+            return $this->basePath . ($path ? '/' . $path : $path);
         }
 
         if ($this->inConsole()) {
             $this->basePath = getcwd();
         } else {
-            $this->basePath = realpath(getcwd().'/../');
+            $this->basePath = realpath(getcwd() . '/../');
         }
 
         return $this->basePath($path);
@@ -241,7 +238,7 @@ class Zim extends Container
     /**
      * Load a configuration file into the application.
      *
-     * @param  string  $name
+     * @param  string $name
      * @return void
      */
     public function configure($name)
@@ -262,25 +259,25 @@ class Zim extends Container
      *
      * If no name is provided, then we'll return the path to the config folder.
      *
-     * @param  string|null  $name
+     * @param  string|null $name
      * @return string
      */
     public function getConfigPath($name = null)
     {
-        if (! $name) {
-            $appConfigDir = $this->basePath('config').'/';
+        if (!$name) {
+            $appConfigDir = $this->basePath('config') . '/';
 
             if (file_exists($appConfigDir)) {
                 return $appConfigDir;
-            } elseif (file_exists($path = $this->basePath('../config/'))) {
+            } else if (file_exists($path = $this->basePath('../config/'))) {
                 return $path;
             }
         } else {
-            $appConfigPath = $this->basePath('config').'/'.$name.'.php';
+            $appConfigPath = $this->basePath('config') . '/' . $name . '.php';
 
             if (file_exists($appConfigPath)) {
                 return $appConfigPath;
-            } elseif (file_exists($path = $this->basePath('../config/'.$name.'.php'))) {
+            } else if (file_exists($path = $this->basePath('../config/' . $name . '.php'))) {
                 return $path;
             }
         }
