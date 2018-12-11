@@ -23,11 +23,6 @@ use Zim\Support\Str;
 trait Handler
 {
     /**
-     * @var Router
-     */
-    protected $router;
-
-    /**
      * @param Request $request
      * @return Response
      * @throws \Throwable
@@ -154,10 +149,20 @@ trait Handler
      */
     public function dispatchToRouter(Request $request) :Response
     {
-        $route = $this->router->matchRequest($request);
-        $callable = [$this->make($route->getDefault('_controller')), $route->getDefault('_action')];
+        $route = $this->getRouter()->matchRequest($request);
+        if (!$callable = $route->getDefault('_callable')) {
+            $callable = [$this->make($route->getDefault('_controller')), $route->getDefault('_action')];
+        }
 
         return $this->doDispatch($request, $callable, $route->getParameters());
+    }
+
+    /**
+     * @return Router
+     */
+    private function getRouter()
+    {
+        return $this->make('router');
     }
 
     /**
@@ -168,7 +173,12 @@ trait Handler
      */
     private function doDispatch(Request $request, callable $callable, $params = []) :Response
     {
-        $request->attributes->set('callable', $callable);
+        if (is_array($callable)) {
+            $request->attributes->set('callable', [get_class($callable[0]), $callable[1]]);
+        } else {
+            $request->attributes->set('callable', ['Closure', 'Closure']);
+        }
+
         $e = new DispatchEvent($request);
         $this->fire($e);
         if ($resp = $e->getResponse()) {

@@ -11,7 +11,7 @@
 use \Zim\Routing\Registrar;
 
 Registrar::get('/test_reg', 'Index@test');
-Registrar::post('/xx', 'Index@test');
+Registrar::any('/xx/{x<\d+>?1}', 'Index@test');
 
 return [
     '/'                   => 'Index@index',

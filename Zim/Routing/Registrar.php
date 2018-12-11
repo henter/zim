@@ -98,6 +98,9 @@ class Registrar
      */
     protected function registrarRoute($method, $uri, $info = null)
     {
+        if ($method == 'any') {
+            $method = [];
+        }
         return $this->router->addRoute($method, $uri, $info);
     }
 
@@ -148,8 +151,7 @@ class Registrar
     public static function __callStatic($method, $parameters)
     {
         if (!static::$instance) {
-            $router = new Router(new RouteCollection());
-            static::$instance = new static($router);
+            static::$instance = new static(\Zim\Zim::app('router'));
         }
         return call_user_func([static::$instance, $method], ...$parameters);
     }

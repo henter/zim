@@ -31,7 +31,12 @@ trait InjectContainer
         return Zim::getInstance()->make($name);
     }
 
-    public function __set(string $name, $value)
+    public function app(string $name)
+    {
+        return Zim::getInstance()->make($name);
+    }
+
+    public function bind(string $name, $value)
     {
         Zim::getInstance()->bind($name, $value);
     }

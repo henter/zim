@@ -35,9 +35,9 @@ class Router
      * Router constructor.
      * @param RouteCollection $routes
      */
-    public function __construct(RouteCollection $routes)
+    public function __construct(RouteCollection $routes = null)
     {
-        $this->routes = $routes;
+        $this->routes = $routes ?: new RouteCollection();
     }
 
     public function getRoutes()
@@ -79,15 +79,15 @@ class Router
      */
     protected function createRoute($methods, $uri, $info)
     {
-        if (strpos($info, '@')) {
+        if (is_callable($info)) {
+            $defaults = [
+                '_callable' => $info
+            ];
+        }else if (strpos($info, '@')) {
             list($controller, $action) = explode('@', $info);
             $defaults = [
                 '_controller' => 'App\\Controller\\' . $controller . 'Controller',
                 '_action' => $action . 'Action',
-            ];
-        } else if (is_callable($info)) {
-            $defaults = [
-                '_callable' => $info
             ];
         }
 

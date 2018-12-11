@@ -28,25 +28,26 @@ class ExceptionHandler
 {
     private $debug;
     private $charset;
+    private $fileLinkFormat;
 
-    public function __construct(bool $debug = true, string $charset = null)
+    public function __construct(bool $debug = true, $fileLinkFormat = null)
     {
         $this->debug = $debug;
-        $this->charset = $charset ?: ini_get('default_charset') ?: 'UTF-8';
+        $this->charset = ini_get('default_charset') ?: 'UTF-8';
+        $this->fileLinkFormat = $fileLinkFormat;
     }
 
     /**
      * Registers the exception handler.
      *
      * @param bool        $debug          Enable/disable debug mode, where the stack trace is displayed
-     * @param string|null $charset        The charset used by exception messages
      * @param string|null $fileLinkFormat The IDE link template
      *
      * @return static
      */
-    public static function register($debug = true, $charset = null)
+    public static function register($debug = true, $fileLinkFormat = null)
     {
-        $handler = new static($debug, $charset);
+        $handler = new static($debug, $fileLinkFormat);
         set_exception_handler(array($handler, 'handle'));
         return $handler;
     }
@@ -254,7 +255,24 @@ EOF;
     private function formatPath($path, $line)
     {
         $file = $this->escapeHtml(preg_match('#[^/\\\\]*+$#', $path, $file) ? $file[0] : $path);
-        return sprintf('<span class="block trace-file-path">in <a title="%s%3$s"><strong>%s</strong>%s</a></span>', $this->escapeHtml($path), $file, 0 < $line ? ' line '.$line : '');
+        $fmt = $this->fileLinkFormat;
+
+        if (!$fmt) {
+            return sprintf('<span class="block trace-file-path">in <a title="%s%3$s"><strong>%s</strong>%s</a></span>', $this->escapeHtml($path), $file, 0 < $line ? ' line '.$line : '');
+        }
+
+        $i = strpos($f = $fmt, '&', max(strrpos($f, '%f'), strrpos($f, '%l'))) ?: \strlen($f);
+        $fmt = array(substr($f, 0, $i)) + preg_split('/&([^>]++)>/', substr($f, $i), -1, PREG_SPLIT_DELIM_CAPTURE);
+
+        for ($i = 1; isset($fmt[$i]); ++$i) {
+            if (0 === strpos($path, $k = $fmt[$i++])) {
+                $path = substr_replace($path, $fmt[$i], 0, \strlen($k));
+                break;
+            }
+        }
+        $link = strtr($fmt[0], array('%f' => $path, '%l' => $line));
+
+        return sprintf('<span class="block trace-file-path">in <a href="%s" title="Go to source"><strong>%s</string>%s</a></span>', $this->escapeHtml($link), $file, 0 < $line ? ' line '.$line : '');
     }
 
     /**

@@ -12,7 +12,6 @@ use Zim\Container\Container;
 use Zim\Contract\Request;
 use Zim\Event\Event;
 use Zim\Routing\Registrar;
-use Zim\Routing\Route;
 use Zim\Routing\RouteCollection;
 use Zim\Service\LogService;
 use Zim\Service\Service;
@@ -76,21 +75,18 @@ class Zim extends Container
         $this->registerErrorHandling();
         $this->bootstrapContainer();
         $this->bootstrapConfig();
-        $this->bootstrapRouter();
+        $this->bootstrapRoutes();
 
         $this->registerServices();
     }
 
-    protected function bootstrapRouter()
+    protected function bootstrapRoutes()
     {
-        $this->router = new Router(new RouteCollection());
-        $this->instance('router', $this->router);
-
-        $this->router->merge(Registrar::getRoutes());
-
-        $configRoutes = self::config('routes') ?: [];
-        foreach ($configRoutes as $pattern => $to) {
-            $this->router->addRoute([], $pattern, $to);
+        $configRoutes = self::config('routes');
+        if (is_array($configRoutes)) {
+            foreach ($configRoutes as $pattern => $to) {
+                $this->getRouter()->addRoute([], $pattern, $to);
+            }
         }
     }
 
@@ -105,6 +101,7 @@ class Zim extends Container
         $this->instance('zim', $this);
         $this->instance('config', new Config());
         $this->instance('event', new Dispatcher());
+        $this->instance('router', new Router());
         $this->instance('env', $this->env());
 
         $this->aliases = [
@@ -301,7 +298,7 @@ class Zim extends Container
         //do not handle for console
         if (!$this->inConsole()) {
             ini_set('display_errors', 0);
-            ExceptionHandler::register();
+            ExceptionHandler::register(true, "phpstorm://open?file=%f&line=%l");
             ErrorHandler::register();
         }
     }

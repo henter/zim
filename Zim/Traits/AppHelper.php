@@ -10,6 +10,7 @@ namespace Zim\Traits;
 
 use Zim\Container\Container;
 use Zim\Event\Dispatcher;
+use Zim\Zim;
 
 trait AppHelper
 {
@@ -53,10 +54,10 @@ trait AppHelper
     public static function app($make = null)
     {
         if (is_null($make)) {
-            return Container::getInstance();
+            return Zim::getInstance();
         }
 
-        return Container::getInstance()->make($make);
+        return Zim::getInstance()->make($make);
     }
 
     /**

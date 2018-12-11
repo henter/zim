@@ -8,6 +8,7 @@
 
 namespace App\Service;
 
+use Zim\Event\DispatchEvent;
 use Zim\Event\Event;
 use Zim\Event\RequestEvent;
 use Zim\Event\ResponseEvent;
@@ -40,9 +41,14 @@ class AppService extends Service
             }
         });
 
-        Event::on(function(RequestEvent $e) {
-            $resp = new JsonResponse(['code' => 0, 'data' => 'test on event']);
-            //$e->setResponse($resp);
+        Event::on(function(ResponseEvent $e) {
+            $resp = new JsonResponse([
+                'code' => 0,
+                'data' => 'test on event',
+                'origin' => $e->getResponse() ? $e->getResponse()->getContent() : 'empty response',
+                'callable' => $e->getRequest()->get('callable')
+            ]);
+            $e->setResponse($resp);
             //return 222;
         });
 
