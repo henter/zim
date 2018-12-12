@@ -28,7 +28,10 @@ trait InjectContainer
 
     public function __get(string $name)
     {
-        return Zim::getInstance()->make($name);
+        if (Zim::getInstance()->has($name)) {
+            return Zim::getInstance()->make($name);
+        }
+        return null;
     }
 
     public function app(string $name)

@@ -9,7 +9,6 @@
 namespace App\Action\Index;
 
 use App\Action\Action;
-use Zim\Contract\Config;
 
 class PageAction extends Action
 {
@@ -17,7 +16,6 @@ class PageAction extends Action
 
     public function execute()
     {
-        var_dump($this->app(Config::class)->get('routes'));
         return 'page response test';
     }
 }
