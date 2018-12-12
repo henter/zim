@@ -127,7 +127,7 @@ class Kernel
             return ['Index', 'index'];
         }
 
-        [$c, $a] = isset($segments[1]) ? $segments : [$segments[0], 'index'];
+        list($c, $a) = isset($segments[1]) ? $segments : [$segments[0], 'index'];
 
         //如果 FooController 不存在，则尝试调度到 IndexController@fooAction
         if (!$c = $this->guessController($c)) {
@@ -156,7 +156,7 @@ class Kernel
     public function dispatchToDefault(Request $request): Response
     {
         //FooController index
-        [$c, $a] = $this->getDefaultRoute($request);
+        list($c, $a) = $this->getDefaultRoute($request);
 
         /**
          * @var Controller $controller

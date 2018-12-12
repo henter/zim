@@ -472,7 +472,7 @@ class Response implements ResponseContract
      *
      * @final
      */
-    public function getCharset(): ?string
+    public function getCharset(): string
     {
         return $this->charset;
     }

@@ -71,7 +71,7 @@ class Config implements ArrayAccess, ConfigContract
 
         foreach ($keys as $key => $default) {
             if (is_numeric($key)) {
-                [$key, $default] = [$default, null];
+                list($key, $default) = [$default, null];
             }
 
             $config[$key] = Arr::get($this->items, $key, $default);
