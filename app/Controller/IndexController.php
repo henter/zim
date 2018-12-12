@@ -47,4 +47,9 @@ class IndexController extends Controller
     {
         return new JsonResponse(['xx' => 'xxxxxxxxx']);
     }
+
+    public function helloAction($world)
+    {
+        return 'hello '.$world;
+    }
 }

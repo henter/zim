@@ -1,39 +1,75 @@
 <?php
 /**
- * File RouteRequest.php
+ * File Kernel.php
  * @henter
  * Time: 2018-11-26 16:07
- *
  */
 
-namespace Zim\Traits;
+namespace Zim\Http;
 
 use Zim\Event\DispatchEvent;
+use Zim\Event\Event;
 use Zim\Event\RequestEvent;
 use Zim\Event\ResponseEvent;
 use Zim\Event\TerminateEvent;
 use Zim\Http\Exception\NotFoundException;
 use Zim\Http\Exception\ResponseException;
-use Zim\Http\Request;
-use Zim\Http\Response;
-use Zim\Http\Controller;
 use Zim\Routing\Router;
 use Zim\Support\Str;
+use Zim\Zim;
 
-trait Handler
+class Kernel
 {
+    /**
+     * @var Zim
+     */
+    protected $zim;
+
+    /**
+     * @var Router
+     */
+    protected $router;
+
+    /**
+     * Create a new HTTP kernel instance.
+     *
+     * @param  Zim    $zim
+     * @param  Router $router
+     * @return void
+     */
+    public function __construct(Zim $zim, Router $router)
+    {
+        $this->zim = $zim;
+        $this->router = $router;
+        $this->bootstrapRoutes();
+    }
+
+    protected function bootstrapRoutes()
+    {
+        $configs = Zim::config('routes');
+        //just in-case if routes.php not returned any configs as the value would be 1
+        if (!is_array($configs)) {
+            return false;
+        }
+
+        foreach ($configs as $pattern => $to) {
+            $this->router->addRoute([], $pattern, $to);
+        }
+        return true;
+    }
+
     /**
      * @param Request $request
      * @return Response
      * @throws \Throwable
      */
-    public function handle(Request $request) :Response
+    public function handle(Request $request): Response
     {
-        $this->instance('request', $request);
-        $this->boot();
+        $this->zim->instance('request', $request);
+        $this->zim->boot();
 
         $requestEvent = new RequestEvent($request);
-        $this->fire($requestEvent);
+        Event::fire($requestEvent);
         if ($resp = $requestEvent->getResponse()) {
             return $resp->prepare($request);
         }
@@ -47,7 +83,7 @@ trait Handler
         }
 
         $respEvent = new ResponseEvent($request, $response);
-        $this->fire($respEvent);
+        Event::fire($respEvent);
         return $respEvent->getResponse()->prepare($request);
     }
 
@@ -58,12 +94,12 @@ trait Handler
      */
     private function guessController($uri)
     {
-        if (class_exists('App\\Controller\\'.ucfirst($uri).'Controller')) {
+        if (class_exists('App\\Controller\\' . ucfirst($uri) . 'Controller')) {
             return ucfirst($uri);
         }
 
         $suffix = 'Controller.php';
-        $files = glob(APP_PATH. '/Controller/*'.$suffix);
+        $files = glob(APP_PATH . '/Controller/*' . $suffix);
         foreach ($files as $file) {
             $name = Str::replaceLast($suffix, '', basename($file));
             if ($uri === strtolower($name)) {
@@ -117,7 +153,7 @@ trait Handler
      * @return Response
      * @throws \Throwable
      */
-    public function dispatchToDefault(Request $request) :Response
+    public function dispatchToDefault(Request $request): Response
     {
         //FooController index
         [$c, $a] = $this->getDefaultRoute($request);
@@ -125,7 +161,7 @@ trait Handler
         /**
          * @var Controller $controller
          */
-        $controller = $this->make('App\\Controller\\'.$c.'Controller');
+        $controller = $this->zim->make('App\\Controller\\' . $c . 'Controller');
 
         //try controller action ?
         if ($method = $controller->getAction($a)) {
@@ -135,7 +171,7 @@ trait Handler
             if (!class_exists($actionClass = $controller->getActionClass($a))) {
                 throw new NotFoundException('action not found');
             }
-            $callable = [$this->make($actionClass), 'execute'];
+            $callable = [$this->zim->make($actionClass), 'execute'];
         }
 
         return $this->doDispatch($request, $callable);
@@ -147,31 +183,26 @@ trait Handler
      * @param Request $request
      * @return Response
      */
-    public function dispatchToRouter(Request $request) :Response
+    public function dispatchToRouter(Request $request): Response
     {
-        $route = $this->getRouter()->matchRequest($request);
+        $route = $this->router->matchRequest($request);
         if (!$callable = $route->getDefault('_callable')) {
-            $callable = [$this->make($route->getDefault('_controller')), $route->getDefault('_action')];
+            $callable = [$this->zim->make($route->getDefault('_controller')), $route->getDefault('_action')];
+            if (!is_callable($callable)) {
+                throw new NotFoundException('action not found '.$callable[1]);
+            }
         }
 
         return $this->doDispatch($request, $callable, $route->getParameters());
     }
 
     /**
-     * @return Router
-     */
-    private function getRouter()
-    {
-        return $this->make('router');
-    }
-
-    /**
-     * @param Request $request
+     * @param Request  $request
      * @param callable $callable
-     * @param array $params
+     * @param array    $params
      * @return Response
      */
-    private function doDispatch(Request $request, callable $callable, $params = []) :Response
+    private function doDispatch(Request $request, callable $callable, $params = []): Response
     {
         if (is_array($callable)) {
             $request->attributes->set('callable', [get_class($callable[0]), $callable[1]]);
@@ -180,19 +211,19 @@ trait Handler
         }
 
         $e = new DispatchEvent($request);
-        $this->fire($e);
+        Event::fire($e);
         if ($resp = $e->getResponse()) {
             return $resp->prepare($request);
         }
 
-        return $this->toResponse($this->call($callable, $params));
+        return $this->toResponse($this->zim->call($callable, $params));
     }
 
     /**
      * @param mixed $resp
      * @return Response
      */
-    private function toResponse($resp) :Response
+    private function toResponse($resp): Response
     {
         if ($resp instanceof Response) {
             $response = $resp;
@@ -207,12 +238,12 @@ trait Handler
     /**
      * will not return to fastcgi
      *
-     * @param Request $request
+     * @param Request  $request
      * @param Response $response
      */
     public function terminate(Request $request, Response $response)
     {
-        $this->fire(new TerminateEvent($request, $response));
+        Event::fire(new TerminateEvent($request, $response));
     }
 
 }

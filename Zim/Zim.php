@@ -9,20 +9,17 @@
 namespace Zim;
 
 use Zim\Container\Container;
-use Zim\Contract\Request;
 use Zim\Event\Event;
-use Zim\Routing\Registrar;
-use Zim\Routing\RouteCollection;
 use Zim\Service\LogService;
 use Zim\Service\Service;
 use Zim\Debug\ErrorHandler;
 use Zim\Debug\ExceptionHandler;
 use Zim\Event\Dispatcher;
 use Zim\Routing\Router;
-use Zim\Traits\AppHelper;
-use Zim\Traits\Handler;
+use Zim\Http\Request;
 use Zim\Config\Config;
 use Zim\Contract\Config as ConfigContract;
+use Zim\Contract\Request as RequestContract;
 
 /**
  * Class Zim
@@ -31,9 +28,6 @@ use Zim\Contract\Config as ConfigContract;
 class Zim extends Container
 {
     const VERSION = 'Zim (1.0.0)';
-
-    use AppHelper;
-    use Handler;
 
     /**
      * All of the loaded configuration files.
@@ -75,19 +69,7 @@ class Zim extends Container
         $this->registerErrorHandling();
         $this->bootstrapContainer();
         $this->bootstrapConfig();
-        $this->bootstrapRoutes();
-
         $this->registerServices();
-    }
-
-    protected function bootstrapRoutes()
-    {
-        $configRoutes = self::config('routes');
-        if (is_array($configRoutes)) {
-            foreach ($configRoutes as $pattern => $to) {
-                $this->getRouter()->addRoute([], $pattern, $to);
-            }
-        }
     }
 
     /**
@@ -105,15 +87,15 @@ class Zim extends Container
         $this->instance('env', $this->env());
 
         $this->aliases = [
-            Zim::class               => 'zim',
-            Container::class         => 'zim',
-            Config::class            => 'config',
-            ConfigContract::class    => 'config',
-            Event::class             => 'event',
-            Dispatcher::class        => 'event',
-            Request::class           => 'request',
-            Router::class            => 'router',
-            \Zim\Http\Request::class => 'request',
+            Zim::class             => 'zim',
+            Container::class       => 'zim',
+            Config::class          => 'config',
+            ConfigContract::class  => 'config',
+            Event::class           => 'event',
+            Dispatcher::class      => 'event',
+            RequestContract::class => 'request',
+            Request::class         => 'request',
+            Router::class          => 'router',
         ];
     }
 
@@ -303,4 +285,62 @@ class Zim extends Container
         }
     }
 
+
+    /**
+     * helpers
+     */
+
+    /**
+     * @return Dispatcher
+     */
+    private function getEvent()
+    {
+        return $this->make('event');
+    }
+
+    /**
+     * @param       $event
+     * @param array $payload
+     * @param bool  $halt
+     * @return mixed
+     */
+    public function fire($event, $payload = [], $halt = false)
+    {
+        return $this->getEvent()->fire($event, $payload, $halt);
+    }
+
+    /**
+     * @param null $make
+     * @return mixed
+     */
+    public static function app($make = null)
+    {
+        if (is_null($make)) {
+            return Zim::getInstance();
+        }
+
+        return Zim::getInstance()->make($make);
+    }
+
+    /**
+     * Get / set the specified configuration value.
+     *
+     * If an array is passed as the key, we will assume you want to set an array of values.
+     *
+     * @param  array|string|null $key
+     * @param  mixed             $default
+     * @return mixed
+     */
+    public static function config($key = null, $default = null)
+    {
+        if (is_null($key)) {
+            return self::app('config');
+        }
+
+        if (is_array($key)) {
+            return self::app('config')->set($key);
+        }
+
+        return self::app('config')->get($key, $default);
+    }
 }

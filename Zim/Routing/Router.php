@@ -40,19 +40,12 @@ class Router
         $this->routes = $routes ?: new RouteCollection();
     }
 
+    /**
+     * @return RouteCollection
+     */
     public function getRoutes()
     {
         return $this->routes;
-    }
-
-    public function merge(RouteCollection $collection = null)
-    {
-        if (!$collection) {
-            return;
-        }
-        foreach ($collection as $name => $route) {
-            $this->routes->add($name, $route);
-        }
     }
 
     /**
@@ -65,7 +58,11 @@ class Router
      */
     public function addRoute($methods, $uri, $info)
     {
-        $name = sha1(\json_encode($methods).$uri);
+        if (is_array($info) && !empty($info['name'])) {
+            $name = $info['name'];
+        } else {
+            $name = sha1(\json_encode($methods).$uri);
+        }
         return $this->routes->add($name, $this->createRoute($methods, $uri, $info));
     }
 
@@ -79,19 +76,30 @@ class Router
      */
     protected function createRoute($methods, $uri, $info)
     {
+        $requirements = $options = [];
         if (is_callable($info)) {
             $defaults = [
                 '_callable' => $info
             ];
+        }else if (is_array($info)) {
+            $methods = $info['methods'] ?? [];
+            $defaults = $info['defaults'] ?? [];
+            $requirements = $info['requirements'] ?? [];
+            $options = $info['options'] ?? [];
+
+            list($controller, $action) = explode('@', $info['use']);
+            $defaults['_controller'] = 'App\\Controller\\' . str_replace('/', '\\', $controller) . 'Controller';
+            $defaults['_action'] = $action . 'Action';
+
         }else if (strpos($info, '@')) {
             list($controller, $action) = explode('@', $info);
             $defaults = [
-                '_controller' => 'App\\Controller\\' . $controller . 'Controller',
+                '_controller' => 'App\\Controller\\' . str_replace('/', '\\', $controller) . 'Controller',
                 '_action' => $action . 'Action',
             ];
         }
 
-        return new Route($uri, $defaults, $methods);
+        return new Route($uri, $defaults, $methods, $requirements, $options);
     }
 
     /**

@@ -2,29 +2,22 @@
 
 namespace Zim\Routing;
 
-use Closure;
 use BadMethodCallException;
-use Zim\Support\Arr;
 use InvalidArgumentException;
 
 /**
- * @method static Route get(string $uri, \Closure|array|string|null $info = null)
- * @method static Route post(string $uri, \Closure|array|string|null $info = null)
- * @method static Route put(string $uri, \Closure|array|string|null $info = null)
- * @method static Route delete(string $uri, \Closure|array|string|null $info = null)
- * @method static Route patch(string $uri, \Closure|array|string|null $info = null)
- * @method static Route options(string $uri, \Closure|array|string|null $info = null)
- * @method static Route any(string $uri, \Closure|array|string|null $info = null)
- * @method static Registrar name(string $value)
- * @method static Registrar where(array  $where)
+ * @method get(string $uri, \Closure|array|string|null $info = null)
+ * @method post(string $uri, \Closure|array|string|null $info = null)
+ * @method put(string $uri, \Closure|array|string|null $info = null)
+ * @method delete(string $uri, \Closure|array|string|null $info = null)
+ * @method patch(string $uri, \Closure|array|string|null $info = null)
+ * @method options(string $uri, \Closure|array|string|null $info = null)
+ * @method any(string $uri, \Closure|array|string|null $info = null)
+ * @method name(string $value)
+ * @method where(array  $where)
  */
 class Registrar
 {
-    /**
-     * @var self
-     */
-    public static $instance;
-
     /**
      * The router instance.
      *
@@ -105,14 +98,16 @@ class Registrar
     }
 
     /**
-     * @return RouteCollection|null
+     * Register a new route with the given verbs.
+     *
+     * @param  array|string  $methods
+     * @param  string  $uri
+     * @param  \Closure|array|string|null  $info
+     * @return Route
      */
-    public static function getRoutes()
+    public function doMatch($methods, $uri, $info = null)
     {
-        if (!static::$instance) {
-            return null;
-        }
-        return static::$instance->router->getRoutes();
+        return $this->router->addRoute($methods, $uri, $info);
     }
 
     /**
@@ -134,25 +129,12 @@ class Registrar
             return $this->attribute($method, $parameters[0]);
         }
 
+        if ($method == 'match') {
+            return $this->doMatch(...$parameters);
+        }
+
         throw new BadMethodCallException(sprintf(
             'Method %s::%s does not exist.', static::class, $method
         ));
-    }
-
-    /**
-     * Dynamically handle calls into the route registrar.
-     *
-     * @param  string  $method
-     * @param  array  $parameters
-     * @return Route|$this
-     *
-     * @throws \BadMethodCallException
-     */
-    public static function __callStatic($method, $parameters)
-    {
-        if (!static::$instance) {
-            static::$instance = new static(\Zim\Zim::app('router'));
-        }
-        return call_user_func([static::$instance, $method], ...$parameters);
     }
 }

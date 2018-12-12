@@ -8,15 +8,36 @@
 
 namespace Zim\Http;
 
-use Zim\Traits\InjectContainer;
+use Zim\Zim;
 
 class Controller
 {
-    use InjectContainer;
-
     protected static $method;
 
     protected $actions = [];
+
+    /* inject container methods TODO */
+    public function __get(string $name)
+    {
+        if (Zim::getInstance()->has($name)) {
+            return Zim::getInstance()->make($name);
+        }
+        return null;
+    }
+
+    public function app(string $name)
+    {
+        return Zim::getInstance()->make($name);
+    }
+
+    public function bind(string $name, $value)
+    {
+        Zim::getInstance()->bind($name, $value);
+    }
+
+    /* TODO */
+
+
 
     /**
      * @return Request

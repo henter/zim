@@ -11,9 +11,10 @@
  */
 $zim = require __DIR__.'/../app/bootstrap.php';
 
+$http = $zim->make(\Zim\Http\Kernel::class);
 $request = \Zim\Http\Request::createFromGlobals();
-$response = $zim->handle($request);
+$response = $http->handle($request);
 $response->send();
-$this->terminate($request, $response);
+$http->terminate($request, $response);
 
 

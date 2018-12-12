@@ -6,9 +6,28 @@ namespace Zim\Routing;
  *
  * @author Fabien Potencier <fabien@symfony.com>
  * @author Tobias Schultze <http://tobion.de>
+ *
+ *
+ * static method for route definition
+ *
+ * @method static get(string $uri, \Closure|array|string|null $info = null)
+ * @method static post(string $uri, \Closure|array|string|null $info = null)
+ * @method static put(string $uri, \Closure|array|string|null $info = null)
+ * @method static delete(string $uri, \Closure|array|string|null $info = null)
+ * @method static patch(string $uri, \Closure|array|string|null $info = null)
+ * @method static options(string $uri, \Closure|array|string|null $info = null)
+ * @method static match(array|string $method, string $uri, \Closure|array|string|null $info = null)
+ * @method static any(string $uri, \Closure|array|string|null $info = null)
+ * @method static name(string $value)
+ * @method static where(array  $where)
  */
 class Route
 {
+    /**
+     * @var Registrar
+     */
+    private static $registrar;
+
     private $path = '/';
     private $methods = [];
     private $defaults = [];
@@ -427,5 +446,22 @@ class Route
         }
 
         return $regex;
+    }
+
+    /**
+     * Dynamically handle calls into the route registrar.
+     *
+     * @param  string  $method
+     * @param  array  $parameters
+     * @return Route|$this
+     *
+     * @throws \BadMethodCallException
+     */
+    public static function __callStatic($method, $parameters)
+    {
+        if (!static::$registrar) {
+            static::$registrar = new Registrar(\Zim\Zim::app('router'));
+        }
+        return call_user_func([static::$registrar, $method], ...$parameters);
     }
 }
