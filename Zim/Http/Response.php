@@ -8,6 +8,8 @@
 
 namespace Zim\Http;
 
+use Zim\Contract\Arrayable;
+use Zim\Contract\Jsonable;
 use Zim\Contract\Request as RequestContract;
 use Zim\Contract\Response as ResponseContract;
 
@@ -364,6 +366,11 @@ class Response implements ResponseContract
      */
     public function setContent($content)
     {
+        if ($this->shouldBeJson($content)) {
+            $this->headers->set('Content-Type', 'application/json');
+            $content = $this->morphToJson($content);
+        }
+
         if (null !== $content && !\is_string($content) && !is_numeric($content) && !\is_callable(array($content, '__toString'))) {
             throw new \UnexpectedValueException(sprintf('The Response content must be a string or object implementing __toString(), "%s" given.', \gettype($content)));
         }
@@ -371,6 +378,38 @@ class Response implements ResponseContract
         $this->content = (string) $content;
 
         return $this;
+    }
+
+    /**
+     * Determine if the given content should be turned into JSON.
+     *
+     * @param  mixed  $content
+     * @return bool
+     */
+    protected function shouldBeJson($content)
+    {
+        return $content instanceof Arrayable ||
+            $content instanceof Jsonable ||
+            $content instanceof \ArrayObject ||
+            $content instanceof \JsonSerializable ||
+            is_array($content);
+    }
+
+    /**
+     * Morph the given content into JSON.
+     *
+     * @param  mixed   $content
+     * @return string
+     */
+    protected function morphToJson($content)
+    {
+        if ($content instanceof Jsonable) {
+            return $content->toJson();
+        } elseif ($content instanceof Arrayable) {
+            return json_encode($content->toArray());
+        }
+
+        return json_encode($content);
     }
 
     /**

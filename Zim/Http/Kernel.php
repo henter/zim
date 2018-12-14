@@ -7,6 +7,9 @@
 
 namespace Zim\Http;
 
+use Zim\Contract\Arrayable;
+use Zim\Contract\Jsonable;
+use Zim\Contract\Responsable;
 use Zim\Event\DispatchEvent;
 use Zim\Event\Event;
 use Zim\Event\RequestEvent;
@@ -227,12 +230,27 @@ class Kernel
     {
         if ($resp instanceof Response) {
             $response = $resp;
-        } else if (is_array($resp) || is_scalar($resp) || is_null($resp)) {
-            $response = new Response($resp);
+        } else if ($this->shouldBeJson($resp)) {
+            $response = new JsonResponse($resp);
         } else {
-            throw new ResponseException(500, 'invalid response');
+            $response = new Response($resp);
         }
         return $response;
+    }
+
+    /**
+     * Determine if the given content should be turned into JSON.
+     *
+     * @param  mixed  $content
+     * @return bool
+     */
+    protected function shouldBeJson($content)
+    {
+        return $content instanceof Arrayable ||
+            $content instanceof Jsonable ||
+            $content instanceof \ArrayObject ||
+            $content instanceof \JsonSerializable ||
+            is_array($content);
     }
 
     /**
