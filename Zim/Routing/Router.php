@@ -99,7 +99,7 @@ class Router
             ];
         }
 
-        return new Route($uri, $defaults, $methods, $requirements, $options);
+        return new Route($uri, $defaults, $requirements, $methods, $options);
     }
 
     /**

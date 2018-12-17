@@ -48,16 +48,16 @@ class Route
      *
      * @param string          $path         The path pattern to match
      * @param array           $defaults     An array of default parameter values
-     * @param string|string[] $methods      A required HTTP method or an array of restricted methods
      * @param array           $requirements An array of requirements for parameters (regexes)
+     * @param string|string[] $methods      A required HTTP method or an array of restricted methods
      * @param array           $options      An array of options
      */
-    public function __construct(string $path, array $defaults = [], $methods = [], array $requirements = [],  array $options = [])
+    public function __construct(string $path, array $defaults = array(), array $requirements = array(), $methods = array(), array $options = array())
     {
         $this->setPath($path);
         $this->addDefaults($defaults);
-        $this->setMethods($methods);
         $this->addRequirements($requirements);
+        $this->setMethods($methods);
         $this->addOptions($options);
     }
 
