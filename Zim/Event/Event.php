@@ -27,11 +27,11 @@ class Event
 
     /**
      * @param $event
-     * @param array $payload
+     * @param callable $listener
      */
-    public static function listen($event, $payload = [])
+    public static function listen($event, callable $listener)
     {
-        Zim::getInstance()->make('event')->listen($event, $payload);
+        Zim::getInstance()->make('event')->listen($event, $listener);
     }
 
     /**

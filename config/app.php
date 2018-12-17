@@ -12,6 +12,6 @@ return [
 
     //custom services to load
     'services' => [
-        \App\Service\AppService::class,
+        //\App\Service\AppService::class,
     ],
 ];
