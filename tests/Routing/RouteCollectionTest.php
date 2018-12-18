@@ -206,7 +206,8 @@ class RouteCollectionTest extends BaseTestCase
 
         $collection->remove('foo');
         $this->assertSame(array('bar' => $bar, 'last' => $last), $collection->all(), '->remove() can remove a single route');
-        $collection->remove(array('bar', 'last'));
+        $collection->remove('bar');
+        $collection->remove('last');
         $this->assertSame(array(), $collection->all(), '->remove() accepts an array and can remove multiple routes at once');
     }
 
@@ -233,7 +234,7 @@ class RouteCollectionTest extends BaseTestCase
         $collection->add('a', $routea);
         $collection->add('b', $routeb);
 
-        $collection->setMethods('PUT');
+        $collection->setMethods(['PUT']);
 
         $this->assertEquals(array('PUT'), $routea->getMethods());
         $this->assertEquals(array('PUT'), $routeb->getMethods());

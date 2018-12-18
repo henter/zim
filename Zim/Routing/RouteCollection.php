@@ -98,13 +98,11 @@ class RouteCollection implements \IteratorAggregate, \Countable
     /**
      * Removes a route or an array of routes by name from the collection.
      *
-     * @param string|string[] $name The route name or an array of route names
+     * @param string $name The route name or an array of route names
      */
-    public function remove($name)
+    public function remove(string $name)
     {
-        foreach ((array) $name as $n) {
-            unset($this->routes[$n]);
-        }
+        unset($this->routes[$name]);
     }
 
     /**
@@ -211,9 +209,9 @@ class RouteCollection implements \IteratorAggregate, \Countable
     /**
      * Sets the HTTP methods (e.g. 'POST') all child routes are restricted to.
      *
-     * @param string|string[] $methods The method or an array of methods
+     * @param string[] $methods The method or an array of methods
      */
-    public function setMethods($methods)
+    public function setMethods(array $methods)
     {
         foreach ($this->routes as $route) {
             $route->setMethods($methods);
