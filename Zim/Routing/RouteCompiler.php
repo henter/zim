@@ -48,28 +48,15 @@ class RouteCompiler
     {
         $variables = [];
         $path = $route->getPath();
-
         $result = self::compilePattern($route, $path);
 
-        $staticPrefix = $result['staticPrefix'];
-
         $pathVariables = $result['variables'];
-
-        foreach ($pathVariables as $pathParam) {
-            if ('_fragment' === $pathParam) {
-                throw new \InvalidArgumentException(sprintf('Route pattern "%s" cannot contain "_fragment" as a path parameter.', $route->getPath()));
-            }
-        }
-
         $variables = array_merge($variables, $pathVariables);
 
-        $tokens = $result['tokens'];
-        $regex = $result['regex'];
-
         return new CompiledRoute(
-            $staticPrefix,
-            $regex,
-            $tokens,
+            $result['staticPrefix'],
+            $result['regex'],
+            $result['tokens'],
             $pathVariables,
             array_unique($variables)
         );
