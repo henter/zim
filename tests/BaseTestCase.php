@@ -25,6 +25,11 @@ class BaseTestCase extends TestCase
         $this->zim = Zim::getInstance();
     }
 
+    public function getConfig(string $name)
+    {
+        return require dirname(APP_PATH).'/config/'.$name.'.php';
+    }
+
     /**
      * @return Dispatcher
      */

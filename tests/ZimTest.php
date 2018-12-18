@@ -5,6 +5,7 @@ use Zim\Config\Config;
 use Zim\Event\Dispatcher;
 use Zim\Event\Event;
 use Zim\Routing\Router;
+use Zim\Zim;
 
 /**
  * File Zim.php
@@ -25,13 +26,14 @@ class ZimTest extends BaseTestCase
     {
         $zim = \Zim\Zim::getInstance();
 
-        $this->assertEquals($zim, $zim->make('zim'));
-        $this->assertEquals($zim, $zim->make(\Zim\Zim::class));
-        $this->assertEquals($zim, $zim->make(\Zim\Container\Container::class));
+        $this->assertSame($zim, $zim->make('zim'));
+        $this->assertSame($zim, $zim->make(\Zim\Zim::class));
+        $this->assertSame($zim, $zim->make(\Zim\Container\Container::class));
 
         $this->assertInstanceOf(Config::class, $zim->make('config'));
         $this->assertInstanceOf(Config::class, $zim->make(Config::class));
         $this->assertInstanceOf(Config::class, $zim->make(\Zim\Contract\Config::class));
+        $this->assertSame($zim::app('config'), $zim->make(Config::class));
 
         $this->assertInstanceOf(Router::class, $zim->make('router'));
         $this->assertInstanceOf(Router::class, $zim->make(Router::class));
@@ -43,9 +45,8 @@ class ZimTest extends BaseTestCase
 
     public function testConfig()
     {
-        $zim = \Zim\Zim::getInstance();
-        $c = require dirname(APP_PATH).'/config/app.php';
-        $this->assertEquals($c, $zim->config('app'));
+        $c = $this->getConfig('app');
+        $this->assertEquals($c, Zim::config('app'));
     }
 
     public function testEvent()
@@ -57,6 +58,6 @@ class ZimTest extends BaseTestCase
             $this->assertEquals($payload, $p);
         });
         Event::fire($event, $payload);
-        \Zim\Zim::getInstance()->fire($event, $payload);
+        Zim::getInstance()->fire($event, $payload);
     }
 }

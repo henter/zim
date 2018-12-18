@@ -62,9 +62,9 @@ class Zim extends Container
      */
     protected $basePath;
 
-    public function __construct()
+    public function __construct(string $path = '')
     {
-        $this->basePath = dirname(APP_PATH);
+        $this->basePath = $path;
 
         $this->registerErrorHandling();
         $this->bootstrapContainer();
@@ -201,7 +201,7 @@ class Zim extends Container
      */
     public function basePath($path = null)
     {
-        if (isset($this->basePath)) {
+        if ($this->basePath) {
             return $this->basePath . ($path ? '/' . $path : $path);
         }
 

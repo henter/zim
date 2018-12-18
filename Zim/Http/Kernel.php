@@ -101,6 +101,10 @@ class Kernel
             return ucfirst($uri);
         }
 
+        if (!defined('APP_PATH')) {
+            return false;
+        }
+
         $suffix = 'Controller.php';
         $files = glob(APP_PATH . '/Controller/*' . $suffix);
         foreach ($files as $file) {
