@@ -11,11 +11,11 @@
 
 namespace Tests\Routing;
 
-use Tests\BaseTestCase;
 use Zim\Routing\Route;
 use Zim\Routing\RouteCollection;
+use PHPUnit\Framework\TestCase;
 
-class RouteCollectionTest extends BaseTestCase
+class RouteCollectionTest extends TestCase
 {
     public function testRoute()
     {
