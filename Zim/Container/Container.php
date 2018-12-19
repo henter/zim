@@ -32,13 +32,6 @@ class Container
     protected $bindings = [];
 
     /**
-     * The container's method bindings.
-     *
-     * @var array
-     */
-    protected $methodBindings = [];
-
-    /**
      * The container's shared instances.
      *
      * @var array
@@ -51,13 +44,6 @@ class Container
      * @var array
      */
     protected $aliases = [];
-
-    /**
-     * The registered aliases keyed by the abstract name.
-     *
-     * @var array
-     */
-    protected $abstractAliases = [];
 
     /**
      * The extension closures for services.
@@ -79,31 +65,6 @@ class Container
      * @var array
      */
     protected $with = [];
-
-    /**
-     * The contextual binding map.
-     *
-     * @var array
-     */
-    public $contextual = [];
-
-    /**
-     * Define a contextual binding.
-     *
-     * @param  array|string  $concrete
-     * @return \Zim\Container\ContextualBindingBuilder
-     */
-    public function when($concrete)
-    {
-        $aliases = [];
-
-        $concretes = is_array($concrete) ? $concrete: [$concrete];
-        foreach ($concretes as $c) {
-            $aliases[] = $this->getAlias($c);
-        }
-
-        return new ContextualBindingBuilder($this, $aliases);
-    }
 
     /**
      * Determine if the given abstract type has been bound.
@@ -176,9 +137,6 @@ class Container
      */
     public function bind($abstract, $concrete = null, $shared = false)
     {
-        // If no concrete type was given, we will simply set the concrete type to the
-        // abstract type. After that, the concrete type to be registered as shared
-        // without being forced to state their classes in both of the parameters.
         $this->dropStaleInstances($abstract);
 
         if (is_null($concrete)) {
@@ -211,69 +169,6 @@ class Container
 
             return $container->make($concrete, $parameters);
         };
-    }
-
-    /**
-     * Determine if the container has a method binding.
-     *
-     * @param  string  $method
-     * @return bool
-     */
-    public function hasMethodBinding($method)
-    {
-        return isset($this->methodBindings[$method]);
-    }
-
-    /**
-     * Bind a callback to resolve with Container::call.
-     *
-     * @param  array|string  $method
-     * @param  \Closure  $callback
-     * @return void
-     */
-    public function bindMethod($method, $callback)
-    {
-        $this->methodBindings[$this->parseBindMethod($method)] = $callback;
-    }
-
-    /**
-     * Get the method to be bound in class@method format.
-     *
-     * @param  array|string $method
-     * @return string
-     */
-    protected function parseBindMethod($method)
-    {
-        if (is_array($method)) {
-            return $method[0].'@'.$method[1];
-        }
-
-        return $method;
-    }
-
-    /**
-     * Get the method binding for the given method.
-     *
-     * @param  string  $method
-     * @param  mixed  $instance
-     * @return mixed
-     */
-    public function callMethodBinding($method, $instance)
-    {
-        return call_user_func($this->methodBindings[$method], $instance, $this);
-    }
-
-    /**
-     * Add a contextual binding to the container.
-     *
-     * @param  string  $concrete
-     * @param  string  $abstract
-     * @param  \Closure|string  $implementation
-     * @return void
-     */
-    public function addContextualBinding($concrete, $abstract, $implementation)
-    {
-        $this->contextual[$concrete][$this->getAlias($abstract)] = $implementation;
     }
 
     /**
@@ -317,33 +212,10 @@ class Container
      */
     public function instance($abstract, $instance)
     {
-        $this->removeAbstractAlias($abstract);
-
         unset($this->aliases[$abstract]);
         $this->instances[$abstract] = $instance;
 
         return $instance;
-    }
-
-    /**
-     * Remove an alias from the contextual binding alias cache.
-     *
-     * @param  string  $searched
-     * @return void
-     */
-    protected function removeAbstractAlias($searched)
-    {
-        if (! isset($this->aliases[$searched])) {
-            return;
-        }
-
-        foreach ($this->abstractAliases as $abstract => $aliases) {
-            foreach ($aliases as $index => $alias) {
-                if ($alias == $searched) {
-                    unset($this->abstractAliases[$abstract][$index]);
-                }
-            }
-        }
     }
 
     /**
@@ -356,8 +228,6 @@ class Container
     public function alias($abstract, $alias)
     {
         $this->aliases[$alias] = $abstract;
-
-        $this->abstractAliases[$abstract][] = $alias;
     }
 
     /**
@@ -411,47 +281,27 @@ class Container
     {
         $abstract = $this->getAlias($abstract);
 
-        $needsContextualBuild = ! empty($parameters) || ! is_null(
-            $this->getContextualConcrete($abstract)
-        );
-
-        // If an instance of the type is currently being managed as a singleton we'll
-        // just return an existing instance instead of instantiating new instances
-        // so the developer can keep using the same objects instance every time.
-        if (isset($this->instances[$abstract]) && ! $needsContextualBuild) {
+        if (isset($this->instances[$abstract])) {
             return $this->instances[$abstract];
         }
 
         $this->with[] = $parameters;
 
         $concrete = $this->getConcrete($abstract);
-
-        // We're ready to instantiate an instance of the concrete type registered for
-        // the binding. This will instantiate the types, as well as resolve any of
-        // its "nested" dependencies recursively until all have gotten resolved.
         if ($this->isBuildable($concrete, $abstract)) {
             $object = $this->build($concrete);
         } else {
             $object = $this->make($concrete);
         }
 
-        // If we defined any extenders for this type, we'll need to spin through them
-        // and apply them to the object being built. This allows for the extension
-        // of services, such as changing configuration or decorating the object.
         foreach ($this->getExtenders($abstract) as $extender) {
             $object = $extender($object, $this);
         }
 
-        // If the requested type is registered as a singleton we'll want to cache off
-        // the instances in "memory" so we can return it later without creating an
-        // entirely new instance of an object on each subsequent request for it.
-        if ($this->isShared($abstract) && ! $needsContextualBuild) {
+        if ($this->isShared($abstract)) {
             $this->instances[$abstract] = $object;
         }
 
-        // Before returning, we will also set the resolved flag to "true" and pop off
-        // the parameter overrides for this build. After those two things are done
-        // we will be ready to return back the fully constructed class instance.
         $this->resolved[$abstract] = true;
 
         array_pop($this->with);
@@ -467,57 +317,11 @@ class Container
      */
     protected function getConcrete($abstract)
     {
-        if (! is_null($concrete = $this->getContextualConcrete($abstract))) {
-            return $concrete;
-        }
-
-        // If we don't have a registered resolver or concrete for the type, we'll just
-        // assume each type is a concrete name and will attempt to resolve it as is
-        // since the container should be able to resolve concretes automatically.
         if (isset($this->bindings[$abstract])) {
             return $this->bindings[$abstract]['concrete'];
         }
 
         return $abstract;
-    }
-
-    /**
-     * Get the contextual concrete binding for the given abstract.
-     *
-     * @param  string  $abstract
-     * @return string|null
-     */
-    protected function getContextualConcrete($abstract)
-    {
-        if (! is_null($binding = $this->findInContextualBindings($abstract))) {
-            return $binding;
-        }
-
-        // Next we need to see if a contextual binding might be bound under an alias of the
-        // given abstract type. So, we will need to check if any aliases exist with this
-        // type and then spin through them and check for contextual bindings on these.
-        if (empty($this->abstractAliases[$abstract])) {
-            return;
-        }
-
-        foreach ($this->abstractAliases[$abstract] as $alias) {
-            if (! is_null($binding = $this->findInContextualBindings($alias))) {
-                return $binding;
-            }
-        }
-    }
-
-    /**
-     * Find the concrete binding for the given abstract in the contextual binding array.
-     *
-     * @param  string  $abstract
-     * @return string|null
-     */
-    protected function findInContextualBindings($abstract)
-    {
-        if (isset($this->contextual[end($this->buildStack)][$abstract])) {
-            return $this->contextual[end($this->buildStack)][$abstract];
-        }
     }
 
     /**
@@ -542,18 +346,11 @@ class Container
      */
     public function build($concrete)
     {
-        // If the concrete type is actually a Closure, we will just execute it and
-        // hand back the results of the functions, which allows functions to be
-        // used as resolvers for more fine-tuned resolution of these objects.
         if ($concrete instanceof Closure) {
             return $concrete($this, $this->getLastParameterOverride());
         }
 
         $reflector = new ReflectionClass($concrete);
-
-        // If the type is not instantiable, the developer is attempting to resolve
-        // an abstract type such as an Interface of Abstract Class and there is
-        // no binding registered for the abstractions so we need to bail out.
         if (! $reflector->isInstantiable()) {
             return $this->notInstantiable($concrete);
         }
@@ -562,24 +359,13 @@ class Container
 
         $constructor = $reflector->getConstructor();
 
-        // If there are no constructors, that means there are no dependencies then
-        // we can just resolve the instances of the objects right away, without
-        // resolving any other types or dependencies out of these containers.
         if (is_null($constructor)) {
             array_pop($this->buildStack);
-
             return new $concrete;
         }
 
-        $dependencies = $constructor->getParameters();
-
-        // Once we have all the constructor's parameters we can create each of the
-        // dependency instances and then use the reflection instances to make a
-        // new instance of this class, injecting the created dependencies in.
-        $instances = $this->resolveDependencies($dependencies);
-
+        $instances = $this->resolveDependencies($constructor->getParameters());
         array_pop($this->buildStack);
-
         return $reflector->newInstanceArgs($instances);
     }
 
@@ -656,10 +442,6 @@ class Container
      */
     protected function resolvePrimitive(ReflectionParameter $parameter)
     {
-        if (! is_null($concrete = $this->getContextualConcrete('$'.$parameter->name))) {
-            return $concrete instanceof Closure ? $concrete($this) : $concrete;
-        }
-
         if ($parameter->isDefaultValueAvailable()) {
             return $parameter->getDefaultValue();
         }
@@ -727,28 +509,6 @@ class Container
         $message = "Unresolvable dependency resolving [$parameter] in class {$parameter->getDeclaringClass()->getName()}";
 
         throw new BindingResolutionException($message);
-    }
-
-    /**
-     * Get all callbacks for a given type.
-     *
-     * @param  string  $abstract
-     * @param  object  $object
-     * @param  array   $callbacksPerType
-     *
-     * @return array
-     */
-    protected function getCallbacksForType($abstract, $object, array $callbacksPerType)
-    {
-        $results = [];
-
-        foreach ($callbacksPerType as $type => $callbacks) {
-            if ($type === $abstract || $object instanceof $type) {
-                $results = array_merge($results, $callbacks);
-            }
-        }
-
-        return $results;
     }
 
     /**
@@ -853,7 +613,6 @@ class Container
         $this->resolved = [];
         $this->bindings = [];
         $this->instances = [];
-        $this->abstractAliases = [];
     }
 
     /**
