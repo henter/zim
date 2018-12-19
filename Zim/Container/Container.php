@@ -361,16 +361,15 @@ class Container
     }
 
     /**
-     * Call the given Closure / class@method and inject its dependencies.
+     * Call the given Closure / callable and inject its dependencies.
      *
-     * @param  callable|string  $callback
+     * @param  callable $callback
      * @param  array  $parameters
-     * @param  string|null  $defaultMethod
      * @return mixed
      */
-    public function call($callback, array $parameters = [], $defaultMethod = null)
+    public function call($callback, array $parameters = [])
     {
-        return BoundMethod::call($this, $callback, $parameters, $defaultMethod);
+        return BoundMethod::call($this, $callback, $parameters);
     }
 
     /**
