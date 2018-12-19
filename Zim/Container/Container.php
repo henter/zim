@@ -5,11 +5,11 @@ namespace Zim\Container;
 use Closure;
 use Exception;
 use LogicException;
-use ReflectionClass;
-use ReflectionParameter;
 
 class Container
 {
+    use MagicInjection;
+
     /**
      * The current globally available container (if any).
      *
@@ -51,20 +51,6 @@ class Container
      * @var array
      */
     protected $extenders = [];
-
-    /**
-     * The stack of concretions currently being built.
-     *
-     * @var array
-     */
-    protected $buildStack = [];
-
-    /**
-     * The parameter override stack.
-     *
-     * @var array
-     */
-    protected $with = [];
 
     /**
      * Determine if the given abstract type has been bound.
@@ -231,36 +217,12 @@ class Container
     }
 
     /**
-     * Call the given Closure / callable and inject its dependencies.
-     *
-     * @param  callable $callback
-     * @param  array  $parameters
-     * @return mixed
-     */
-    public function call($callback, array $parameters = [])
-    {
-        return BoundMethod::call($this, $callback, $parameters);
-    }
-
-    /**
-     * Resolve the given type from the container.
-     *
-     * @param  string  $abstract
-     * @param  array  $parameters
-     * @return mixed
-     */
-    public function make($abstract, array $parameters = [])
-    {
-        return $this->resolve($abstract, $parameters);
-    }
-
-    /**
      * get service
      */
     public function get($id)
     {
         try {
-            return $this->resolve($id);
+            return $this->make($id);
         } catch (Exception $e) {
             if ($this->has($id)) {
                 throw $e;
@@ -277,7 +239,7 @@ class Container
      * @param  array  $parameters
      * @return mixed
      */
-    protected function resolve($abstract, $parameters = [])
+    public function make($abstract, $parameters = [])
     {
         $abstract = $this->getAlias($abstract);
 
@@ -285,13 +247,11 @@ class Container
             return $this->instances[$abstract];
         }
 
-        $this->with[] = $parameters;
-
         $concrete = $this->getConcrete($abstract);
         if ($this->isBuildable($concrete, $abstract)) {
-            $object = $this->build($concrete);
+            $object = $this->build($concrete, $parameters);
         } else {
-            $object = $this->make($concrete);
+            $object = $this->make($concrete, $parameters);
         }
 
         foreach ($this->getExtenders($abstract) as $extender) {
@@ -303,8 +263,6 @@ class Container
         }
 
         $this->resolved[$abstract] = true;
-
-        array_pop($this->with);
 
         return $object;
     }
@@ -337,142 +295,18 @@ class Container
     }
 
     /**
-     * Instantiate a concrete instance of the given type.
-     *
-     * @param  string  $concrete
-     * @return mixed
-     *
-     * @throws \Zim\Container\BindingResolutionException
+     * @param       $concrete
+     * @param array $parameters
+     * @return mixed|object
+     * @throws BindingResolutionException
+     * @throws \ReflectionException
      */
-    public function build($concrete)
+    public function build($concrete, array $parameters = [])
     {
         if ($concrete instanceof Closure) {
-            return $concrete($this, $this->getLastParameterOverride());
+            return $concrete($this, $parameters);
         }
-
-        $reflector = new ReflectionClass($concrete);
-        if (! $reflector->isInstantiable()) {
-            return $this->notInstantiable($concrete);
-        }
-
-        $this->buildStack[] = $concrete;
-
-        $constructor = $reflector->getConstructor();
-
-        if (is_null($constructor)) {
-            array_pop($this->buildStack);
-            return new $concrete;
-        }
-
-        $instances = $this->resolveDependencies($constructor->getParameters());
-        array_pop($this->buildStack);
-        return $reflector->newInstanceArgs($instances);
-    }
-
-    /**
-     * Resolve all of the dependencies from the ReflectionParameters.
-     *
-     * @param  array  $dependencies
-     * @return array
-     */
-    protected function resolveDependencies(array $dependencies)
-    {
-        $results = [];
-
-        foreach ($dependencies as $dependency) {
-            // If this dependency has a override for this particular build we will use
-            // that instead as the value. Otherwise, we will continue with this run
-            // of resolutions and let reflection attempt to determine the result.
-            if ($this->hasParameterOverride($dependency)) {
-                $results[] = $this->getParameterOverride($dependency);
-
-                continue;
-            }
-
-            // If the class is null, it means the dependency is a string or some other
-            // primitive type which we can not resolve since it is not a class and
-            // we will just bomb out with an error since we have no-where to go.
-            $results[] = is_null($dependency->getClass())
-                            ? $this->resolvePrimitive($dependency)
-                            : $this->resolveClass($dependency);
-        }
-
-        return $results;
-    }
-
-    /**
-     * Determine if the given dependency has a parameter override.
-     *
-     * @param  \ReflectionParameter  $dependency
-     * @return bool
-     */
-    protected function hasParameterOverride($dependency)
-    {
-        return array_key_exists($dependency->name, $this->getLastParameterOverride());
-    }
-
-    /**
-     * Get a parameter override for a dependency.
-     *
-     * @param  \ReflectionParameter  $dependency
-     * @return mixed
-     */
-    protected function getParameterOverride($dependency)
-    {
-        return $this->getLastParameterOverride()[$dependency->name];
-    }
-
-    /**
-     * Get the last parameter override.
-     *
-     * @return array
-     */
-    protected function getLastParameterOverride()
-    {
-        return count($this->with) ? end($this->with) : [];
-    }
-
-    /**
-     * Resolve a non-class hinted primitive dependency.
-     *
-     * @param  \ReflectionParameter  $parameter
-     * @return mixed
-     *
-     * @throws \Zim\Container\BindingResolutionException
-     */
-    protected function resolvePrimitive(ReflectionParameter $parameter)
-    {
-        if ($parameter->isDefaultValueAvailable()) {
-            return $parameter->getDefaultValue();
-        }
-
-        $this->unresolvablePrimitive($parameter);
-    }
-
-    /**
-     * Resolve a class based dependency from the container.
-     *
-     * @param  \ReflectionParameter  $parameter
-     * @return mixed
-     *
-     * @throws \Zim\Container\BindingResolutionException
-     */
-    protected function resolveClass(ReflectionParameter $parameter)
-    {
-        try {
-            return $this->make($parameter->getClass()->name);
-        }
-
-        // If we can not resolve the class instance, we will check to see if the value
-        // is optional, and if it is we will return the optional parameter value as
-        // the value of the dependency, similarly to how we do this with scalars.
-        catch (BindingResolutionException $e) {
-            if ($parameter->isOptional()) {
-                return $parameter->getDefaultValue();
-            }
-
-            throw $e;
-        }
+        return $this->buildObject($concrete, $parameters);
     }
 
     /**
@@ -485,28 +319,7 @@ class Container
      */
     protected function notInstantiable($concrete)
     {
-        if (! empty($this->buildStack)) {
-            $previous = implode(', ', $this->buildStack);
-
-            $message = "Target [$concrete] is not instantiable while building [$previous].";
-        } else {
-            $message = "Target [$concrete] is not instantiable.";
-        }
-
-        throw new BindingResolutionException($message);
-    }
-
-    /**
-     * Throw an exception for an unresolvable primitive.
-     *
-     * @param  \ReflectionParameter  $parameter
-     * @return void
-     *
-     * @throws \Zim\Container\BindingResolutionException
-     */
-    protected function unresolvablePrimitive(ReflectionParameter $parameter)
-    {
-        $message = "Unresolvable dependency resolving [$parameter] in class {$parameter->getDeclaringClass()->getName()}";
+        $message = "Target [$concrete] is not instantiable.";
 
         throw new BindingResolutionException($message);
     }

@@ -54,9 +54,9 @@ class Dispatcher
      */
     public function on(callable $callback)
     {
-        $r = BoundMethod::getCallReflector($callback);
-        if (!$params = $r->getParameters()) {
-            throw new \InvalidArgumentException('event callback ['.$r->getName().'] parameter empty');
+        $params = Zim::getInstance()->reflectionParams($callback);
+        if (!$params) {
+            throw new \InvalidArgumentException('event on callback parameter empty');
         }
 
         $eventClass = current($params)->getClass()->getName();
