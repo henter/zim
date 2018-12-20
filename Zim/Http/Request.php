@@ -366,27 +366,6 @@ class Request implements \Zim\Contract\Request
     {
         return $this->headers->hasCacheControlDirective('no-cache') || 'no-cache' == $this->headers->get('Pragma');
     }
-    /**
-     * Checks whether the method is cacheable or not.
-     *
-     * @see https://tools.ietf.org/html/rfc7231#section-4.2.3
-     *
-     * @return bool True for GET and HEAD, false otherwise
-     */
-    public function isMethodCacheable()
-    {
-        return \in_array($this->getMethod(), array('GET', 'HEAD'));
-    }
-
-    /**
-     * Gets the Etags.
-     *
-     * @return array The entity tags
-     */
-    public function getETags()
-    {
-        return preg_split('/\s*,\s*/', $this->headers->get('if_none_match'), null, PREG_SPLIT_NO_EMPTY);
-    }
 
     /**
      * Associates a format with mime types.
