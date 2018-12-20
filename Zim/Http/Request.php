@@ -25,6 +25,7 @@ class Request implements \Zim\Contract\Request
     const METHOD_TRACE = 'TRACE';
     const METHOD_CONNECT = 'CONNECT';
 
+    protected static $httpMethodParameterOverride = false;
     /**
      * Custom parameters.
      *
@@ -78,7 +79,22 @@ class Request implements \Zim\Contract\Request
     /**
      * @var string
      */
+    protected $baseUrl;
+
+    /**
+     * @var string
+     */
+    protected $basePath;
+
+    /**
+     * @var string
+     */
     protected $method;
+
+    /**
+     * @var string
+     */
+    protected $format;
 
     /**
      * @var array
@@ -133,7 +149,10 @@ class Request implements \Zim\Contract\Request
         $this->content = $content;
         $this->pathInfo = null;
         $this->requestUri = null;
+        $this->baseUrl = null;
+        $this->basePath = null;
         $this->method = null;
+        $this->format = null;
     }
 
     /**
@@ -156,6 +175,235 @@ class Request implements \Zim\Contract\Request
     }
 
     /**
+     * Creates a Request based on a given URI and configuration.
+     *
+     * The information contained in the URI always take precedence
+     * over the other information (server and parameters).
+     *
+     * @param string               $uri        The URI
+     * @param string               $method     The HTTP method
+     * @param array                $parameters The query (GET) or request (POST) parameters
+     * @param array                $server     The server parameters ($_SERVER)
+     * @param string|resource|null $content    The raw body data
+     *
+     * @return static
+     */
+    public static function create($uri, $method = 'GET', $parameters = array(), $server = array(), $content = null)
+    {
+        $server = array_replace(array(
+            'SERVER_NAME' => 'localhost',
+            'SERVER_PORT' => 80,
+            'HTTP_HOST' => 'localhost',
+            'HTTP_USER_AGENT' => 'Symfony',
+            'HTTP_ACCEPT' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'HTTP_ACCEPT_LANGUAGE' => 'en-us,en;q=0.5',
+            'HTTP_ACCEPT_CHARSET' => 'ISO-8859-1,utf-8;q=0.7,*;q=0.7',
+            'REMOTE_ADDR' => '127.0.0.1',
+            'SCRIPT_NAME' => '',
+            'SCRIPT_FILENAME' => '',
+            'SERVER_PROTOCOL' => 'HTTP/1.1',
+            'REQUEST_TIME' => time(),
+        ), $server);
+
+        $server['PATH_INFO'] = '';
+        $server['REQUEST_METHOD'] = strtoupper($method);
+
+        $components = parse_url($uri);
+        if (isset($components['host'])) {
+            $server['SERVER_NAME'] = $components['host'];
+            $server['HTTP_HOST'] = $components['host'];
+        }
+
+        if (isset($components['scheme'])) {
+            if ('https' === $components['scheme']) {
+                $server['HTTPS'] = 'on';
+                $server['SERVER_PORT'] = 443;
+            } else {
+                unset($server['HTTPS']);
+                $server['SERVER_PORT'] = 80;
+            }
+        }
+
+        if (isset($components['port'])) {
+            $server['SERVER_PORT'] = $components['port'];
+            $server['HTTP_HOST'] .= ':'.$components['port'];
+        }
+
+        if (isset($components['user'])) {
+            $server['PHP_AUTH_USER'] = $components['user'];
+        }
+
+        if (isset($components['pass'])) {
+            $server['PHP_AUTH_PW'] = $components['pass'];
+        }
+
+        if (!isset($components['path'])) {
+            $components['path'] = '/';
+        }
+
+        switch (strtoupper($method)) {
+            case 'POST':
+            case 'PUT':
+            case 'DELETE':
+                if (!isset($server['CONTENT_TYPE'])) {
+                    $server['CONTENT_TYPE'] = 'application/x-www-form-urlencoded';
+                }
+            // no break
+            case 'PATCH':
+                $request = $parameters;
+                $query = array();
+                break;
+            default:
+                $request = array();
+                $query = $parameters;
+                break;
+        }
+
+        $queryString = '';
+        if (isset($components['query'])) {
+            parse_str(html_entity_decode($components['query']), $qs);
+
+            if ($query) {
+                $query = array_replace($qs, $query);
+                $queryString = http_build_query($query, '', '&');
+            } else {
+                $query = $qs;
+                $queryString = $components['query'];
+            }
+        } elseif ($query) {
+            $queryString = http_build_query($query, '', '&');
+        }
+
+        $server['REQUEST_URI'] = $components['path'].('' !== $queryString ? '?'.$queryString : '');
+        $server['QUERY_STRING'] = $queryString;
+
+        return new static($query, $request, [], $server, $content);
+    }
+
+    /**
+     * Clones a request and overrides some of its parameters.
+     *
+     * @param array $query      The GET parameters
+     * @param array $request    The POST parameters
+     * @param array $attributes The request attributes (parameters parsed from the PATH_INFO, ...)
+     * @param array $server     The SERVER parameters
+     *
+     * @return static
+     */
+    public function duplicate(array $query = null, array $request = null, array $attributes = null, array $server = null)
+    {
+        $dup = clone $this;
+        if (null !== $query) {
+            $dup->query = new ParameterBag($query);
+        }
+        if (null !== $request) {
+            $dup->request = new ParameterBag($request);
+        }
+        if (null !== $attributes) {
+            $dup->attributes = new ParameterBag($attributes);
+        }
+        if (null !== $server) {
+            $dup->server = new ServerBag($server);
+            $dup->headers = new HeaderBag($dup->server->getHeaders());
+        }
+        $dup->pathInfo = null;
+        $dup->requestUri = null;
+        $dup->method = null;
+        $dup->format = null;
+
+        if (!$dup->get('_format') && $this->get('_format')) {
+            $dup->attributes->set('_format', $this->get('_format'));
+        }
+
+        if (!$dup->getRequestFormat(null)) {
+            $dup->setRequestFormat($this->getRequestFormat(null));
+        }
+
+        return $dup;
+    }
+
+    /**
+     * Returns the user.
+     *
+     * @return string|null
+     */
+    public function getUser()
+    {
+        return $this->headers->get('PHP_AUTH_USER');
+    }
+
+    /**
+     * Returns the password.
+     *
+     * @return string|null
+     */
+    public function getPassword()
+    {
+        return $this->headers->get('PHP_AUTH_PW');
+    }
+
+    /**
+     * Gets the user info.
+     *
+     * @return string A user name and, optionally, scheme-specific information about how to gain authorization to access the server
+     */
+    public function getUserInfo()
+    {
+        $userinfo = $this->getUser();
+
+        $pass = $this->getPassword();
+        if ('' != $pass) {
+            $userinfo .= ":$pass";
+        }
+
+        return $userinfo;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isNoCache()
+    {
+        return $this->headers->hasCacheControlDirective('no-cache') || 'no-cache' == $this->headers->get('Pragma');
+    }
+    /**
+     * Checks whether the method is cacheable or not.
+     *
+     * @see https://tools.ietf.org/html/rfc7231#section-4.2.3
+     *
+     * @return bool True for GET and HEAD, false otherwise
+     */
+    public function isMethodCacheable()
+    {
+        return \in_array($this->getMethod(), array('GET', 'HEAD'));
+    }
+
+    /**
+     * Gets the Etags.
+     *
+     * @return array The entity tags
+     */
+    public function getETags()
+    {
+        return preg_split('/\s*,\s*/', $this->headers->get('if_none_match'), null, PREG_SPLIT_NO_EMPTY);
+    }
+
+    /**
+     * Associates a format with mime types.
+     *
+     * @param string       $format    The format
+     * @param string|array $mimeTypes The associated mime types (the preferred one must be the first as it will be used as the content type)
+     */
+    public function setFormat($format, $mimeTypes)
+    {
+        if (null === static::$formats) {
+            static::initializeFormats();
+        }
+
+        static::$formats[$format] = \is_array($mimeTypes) ? $mimeTypes : array($mimeTypes);
+    }
+
+    /**
      * Gets the request format.
      *
      * Here is the process to determine the format:
@@ -169,7 +417,31 @@ class Request implements \Zim\Contract\Request
      */
     public function getRequestFormat($default = 'html')
     {
-        return $this->attributes->get('_format', $default);
+        if (null === $this->format) {
+            $this->format = $this->attributes->get('_format');
+        }
+
+        return null === $this->format ? $default : $this->format;
+    }
+
+    /**
+     * Sets the request format.
+     *
+     * @param string $format The request format
+     */
+    public function setRequestFormat($format)
+    {
+        $this->format = $format;
+    }
+
+    /**
+     * Gets the format associated with the request.
+     *
+     * @return string|null The format (null if no content type is present)
+     */
+    public function getContentType()
+    {
+        return $this->getFormat($this->headers->get('CONTENT_TYPE'));
     }
 
     /**
@@ -202,6 +474,34 @@ class Request implements \Zim\Contract\Request
         }
 
         return isset(static::$formats[$format]) ? static::$formats[$format] : [];
+    }
+
+    /**
+     * Gets the format associated with the mime type.
+     *
+     * @param string $mimeType The associated mime type
+     *
+     * @return string|null The format (null if not found)
+     */
+    public function getFormat($mimeType)
+    {
+        $canonicalMimeType = null;
+        if (false !== $pos = strpos($mimeType, ';')) {
+            $canonicalMimeType = trim(substr($mimeType, 0, $pos));
+        }
+
+        if (null === static::$formats) {
+            static::initializeFormats();
+        }
+
+        foreach (static::$formats as $format => $mimeTypes) {
+            if (\in_array($mimeType, (array) $mimeTypes)) {
+                return $format;
+            }
+            if (null !== $canonicalMimeType && \in_array($canonicalMimeType, (array) $mimeTypes)) {
+                return $format;
+            }
+        }
     }
 
     /**
@@ -258,6 +558,44 @@ class Request implements \Zim\Contract\Request
             $content;
     }
 
+
+    /**
+     * Overrides the PHP global variables according to this request instance.
+     *
+     * It overrides $_GET, $_POST, $_REQUEST, $_SERVER, $_COOKIE.
+     * $_FILES is never overridden, see rfc1867
+     */
+    public function overrideGlobals()
+    {
+        $this->server->set('QUERY_STRING', static::normalizeQueryString(http_build_query($this->query->all(), '', '&')));
+
+        $_GET = $this->query->all();
+        $_POST = $this->request->all();
+        $_SERVER = $this->server->all();
+
+        foreach ($this->headers->all() as $key => $value) {
+            $key = strtoupper(str_replace('-', '_', $key));
+            if (\in_array($key, array('CONTENT_TYPE', 'CONTENT_LENGTH'))) {
+                $_SERVER[$key] = implode(', ', $value);
+            } else {
+                $_SERVER['HTTP_'.$key] = implode(', ', $value);
+            }
+        }
+
+        $request = array('g' => $_GET, 'p' => $_POST);
+
+        $requestOrder = ini_get('request_order') ?: ini_get('variables_order');
+        $requestOrder = preg_replace('#[^cgp]#', '', strtolower($requestOrder)) ?: 'gp';
+
+        $_REQUEST = array(array());
+
+        foreach (str_split($requestOrder) as $order) {
+            $_REQUEST[] = $request[$order];
+        }
+
+        $_REQUEST = array_merge(...$_REQUEST);
+    }
+
     /**
      * Normalizes a query string.
      *
@@ -278,6 +616,33 @@ class Request implements \Zim\Contract\Request
         ksort($qs);
 
         return http_build_query($qs, '', '&', PHP_QUERY_RFC3986);
+    }
+
+
+    /**
+     * Enables support for the _method request parameter to determine the intended HTTP method.
+     *
+     * Be warned that enabling this feature might lead to CSRF issues in your code.
+     * Check that you are using CSRF tokens when required.
+     * If the HTTP method parameter override is enabled, an html-form with method "POST" can be altered
+     * and used to send a "PUT" or "DELETE" request via the _method request parameter.
+     * If these methods are not protected against CSRF, this presents a possible vulnerability.
+     *
+     * The HTTP method can only be overridden when the real HTTP method is POST.
+     */
+    public static function enableHttpMethodParameterOverride()
+    {
+        self::$httpMethodParameterOverride = true;
+    }
+
+    /**
+     * Checks whether support for the _method request parameter is enabled.
+     *
+     * @return bool True when the _method request parameter is enabled, false otherwise
+     */
+    public static function getHttpMethodParameterOverride()
+    {
+        return self::$httpMethodParameterOverride;
     }
 
     /**
@@ -440,8 +805,7 @@ class Request implements \Zim\Contract\Request
         if (null !== $qs = $this->getQueryString()) {
             $qs = '?'.$qs;
         }
-
-        return $this->getSchemeAndHttpHost().$this->getPathInfo().$qs;
+        return $this->getSchemeAndHttpHost().$this->getBaseUrl().$this->getPathInfo().$qs;
     }
 
     /**
@@ -505,10 +869,26 @@ class Request implements \Zim\Contract\Request
             if ('POST' === $this->method) {
                 if ($method = $this->headers->get('X-HTTP-METHOD-OVERRIDE')) {
                     $this->method = strtoupper($method);
+                } elseif (self::$httpMethodParameterOverride) {
+                    $method = $this->request->get('_method', $this->query->get('_method', 'POST'));
+                    if (\is_string($method)) {
+                        $this->method = strtoupper($method);
+                    }
                 }
             }
         }
         return $this->method;
+    }
+
+    /**
+     * Sets the request method.
+     *
+     * @param string $method
+     */
+    public function setMethod($method)
+    {
+        $this->method = null;
+        $this->server->set('REQUEST_METHOD', $method);
     }
 
     /**
@@ -587,12 +967,37 @@ class Request implements \Zim\Contract\Request
      */
     protected function prepareRequestUri()
     {
-        $requestUri = $this->server->get('REQUEST_URI');
-        // HTTP proxy reqs setup request URI with scheme and host [and port] + the URL path, only use URL path
-        $schemeAndHttpHost = $this->getSchemeAndHttpHost();
-        if (0 === strpos($requestUri, $schemeAndHttpHost)) {
-            $requestUri = substr($requestUri, \strlen($schemeAndHttpHost));
+        $requestUri = '';
+
+        if ('1' == $this->server->get('IIS_WasUrlRewritten') && '' != $this->server->get('UNENCODED_URL')) {
+            // IIS7 with URL Rewrite: make sure we get the unencoded URL (double slash problem)
+            $requestUri = $this->server->get('UNENCODED_URL');
+            $this->server->remove('UNENCODED_URL');
+            $this->server->remove('IIS_WasUrlRewritten');
+        } elseif ($this->server->has('REQUEST_URI')) {
+            $requestUri = $this->server->get('REQUEST_URI');
+
+            // HTTP proxy reqs setup request URI with scheme and host [and port] + the URL path, only use URL path
+            $uriComponents = parse_url($requestUri);
+
+            if (isset($uriComponents['path'])) {
+                $requestUri = $uriComponents['path'];
+            }
+
+            if (isset($uriComponents['query'])) {
+                $requestUri .= '?'.$uriComponents['query'];
+            }
+        } elseif ($this->server->has('ORIG_PATH_INFO')) {
+            // IIS 5.0, PHP as CGI
+            $requestUri = $this->server->get('ORIG_PATH_INFO');
+            if ('' != $this->server->get('QUERY_STRING')) {
+                $requestUri .= '?'.$this->server->get('QUERY_STRING');
+            }
+            $this->server->remove('ORIG_PATH_INFO');
         }
+
+        // normalize the request URI to ease creating sub-requests from this request
+        $this->server->set('REQUEST_URI', $requestUri);
 
         return $requestUri;
     }
@@ -616,7 +1021,171 @@ class Request implements \Zim\Contract\Request
             $requestUri = '/'.$requestUri;
         }
 
-        return $requestUri;
+        if (null === ($baseUrl = $this->getBaseUrl())) {
+            return $requestUri;
+        }
+
+        $pathInfo = substr($requestUri, \strlen($baseUrl));
+        if (false === $pathInfo || '' === $pathInfo) {
+            // If substr() returns false then PATH_INFO is set to an empty string
+            return '/';
+        }
+
+        return (string) $pathInfo;
     }
 
+    /**
+     * Returns the root path from which this request is executed.
+     *
+     * Suppose that an index.php file instantiates this request object:
+     *
+     *  * http://localhost/index.php         returns an empty string
+     *  * http://localhost/index.php/page    returns an empty string
+     *  * http://localhost/web/index.php     returns '/web'
+     *  * http://localhost/we%20b/index.php  returns '/we%20b'
+     *
+     * @return string The raw path (i.e. not urldecoded)
+     */
+    public function getBasePath()
+    {
+        if (null === $this->basePath) {
+            $this->basePath = $this->prepareBasePath();
+        }
+
+        return $this->basePath;
+    }
+    /**
+     * Prepares the base path.
+     *
+     * @return string base path
+     */
+    protected function prepareBasePath()
+    {
+        $baseUrl = $this->getBaseUrl();
+        if (empty($baseUrl)) {
+            return '';
+        }
+
+        $filename = basename($this->server->get('SCRIPT_FILENAME'));
+        if (basename($baseUrl) === $filename) {
+            $basePath = \dirname($baseUrl);
+        } else {
+            $basePath = $baseUrl;
+        }
+
+        if ('\\' === \DIRECTORY_SEPARATOR) {
+            $basePath = str_replace('\\', '/', $basePath);
+        }
+
+        return rtrim($basePath, '/');
+    }
+
+    /**
+     * Returns the root URL from which this request is executed.
+     *
+     * The base URL never ends with a /.
+     *
+     * This is similar to getBasePath(), except that it also includes the
+     * script filename (e.g. index.php) if one exists.
+     *
+     * @return string The raw URL (i.e. not urldecoded)
+     */
+    public function getBaseUrl()
+    {
+        if (null === $this->baseUrl) {
+            $this->baseUrl = $this->prepareBaseUrl();
+        }
+
+        return $this->baseUrl;
+    }
+
+    /**
+     * Prepares the base URL.
+     *
+     * @return string
+     */
+    protected function prepareBaseUrl()
+    {
+        $filename = basename($this->server->get('SCRIPT_FILENAME'));
+
+        if (basename($this->server->get('SCRIPT_NAME')) === $filename) {
+            $baseUrl = $this->server->get('SCRIPT_NAME');
+        } elseif (basename($this->server->get('PHP_SELF')) === $filename) {
+            $baseUrl = $this->server->get('PHP_SELF');
+        } elseif (basename($this->server->get('ORIG_SCRIPT_NAME')) === $filename) {
+            $baseUrl = $this->server->get('ORIG_SCRIPT_NAME'); // 1and1 shared hosting compatibility
+        } else {
+            // Backtrack up the script_filename to find the portion matching
+            // php_self
+            $path = $this->server->get('PHP_SELF', '');
+            $file = $this->server->get('SCRIPT_FILENAME', '');
+            $segs = explode('/', trim($file, '/'));
+            $segs = array_reverse($segs);
+            $index = 0;
+            $last = \count($segs);
+            $baseUrl = '';
+            do {
+                $seg = $segs[$index];
+                $baseUrl = '/'.$seg.$baseUrl;
+                ++$index;
+            } while ($last > $index && (false !== $pos = strpos($path, $baseUrl)) && 0 != $pos);
+        }
+
+        // Does the baseUrl have anything in common with the request_uri?
+        $requestUri = $this->getRequestUri();
+        if ('' !== $requestUri && '/' !== $requestUri[0]) {
+            $requestUri = '/'.$requestUri;
+        }
+
+        if ($baseUrl && false !== $prefix = $this->getUrlencodedPrefix($requestUri, $baseUrl)) {
+            // full $baseUrl matches
+            return $prefix;
+        }
+
+        if ($baseUrl && false !== $prefix = $this->getUrlencodedPrefix($requestUri, rtrim(\dirname($baseUrl), '/'.\DIRECTORY_SEPARATOR).'/')) {
+            // directory portion of $baseUrl matches
+            return rtrim($prefix, '/'.\DIRECTORY_SEPARATOR);
+        }
+
+        $truncatedRequestUri = $requestUri;
+        if (false !== $pos = strpos($requestUri, '?')) {
+            $truncatedRequestUri = substr($requestUri, 0, $pos);
+        }
+
+        $basename = basename($baseUrl);
+        if (empty($basename) || !strpos(rawurldecode($truncatedRequestUri), $basename)) {
+            // no match whatsoever; set it blank
+            return '';
+        }
+
+        // If using mod_rewrite or ISAPI_Rewrite strip the script filename
+        // out of baseUrl. $pos !== 0 makes sure it is not matching a value
+        // from PATH_INFO or QUERY_STRING
+        if (\strlen($requestUri) >= \strlen($baseUrl) && (false !== $pos = strpos($requestUri, $baseUrl)) && 0 !== $pos) {
+            $baseUrl = substr($requestUri, 0, $pos + \strlen($baseUrl));
+        }
+
+        return rtrim($baseUrl, '/'.\DIRECTORY_SEPARATOR);
+    }
+
+    /*
+     * Returns the prefix as encoded in the string when the string starts with
+     * the given prefix, false otherwise.
+     *
+     * @return string|false The prefix as it is encoded in $string, or false
+     */
+    private function getUrlencodedPrefix(string $string, string $prefix)
+    {
+        if (0 !== strpos(rawurldecode($string), $prefix)) {
+            return false;
+        }
+
+        $len = \strlen($prefix);
+
+        if (preg_match(sprintf('#^(%%[[:xdigit:]]{2}|.){%d}#', $len), $string, $match)) {
+            return $match[0];
+        }
+
+        return false;
+    }
 }

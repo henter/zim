@@ -25,7 +25,9 @@ class ResponseHeaderBag extends HeaderBag
     {
         parent::__construct($headers);
 
-        $this->set('Cache-Control', '');
+        if (!isset($this->headers['cache-control'])) {
+            $this->set('Cache-Control', '');
+        }
 
         /* RFC2616 - 14.18 says all Responses need to have a Date */
         if (!isset($this->headers['date'])) {
@@ -102,6 +104,22 @@ class ResponseHeaderBag extends HeaderBag
         if ('date' === $uniqueKey) {
             $this->initDate();
         }
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function hasCacheControlDirective($key)
+    {
+        return array_key_exists($key, $this->computedCacheControl);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getCacheControlDirective($key)
+    {
+        return array_key_exists($key, $this->computedCacheControl) ? $this->computedCacheControl[$key] : null;
     }
 
     /**

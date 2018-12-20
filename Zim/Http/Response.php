@@ -294,7 +294,25 @@ class Response implements ResponseContract
             $this->headers->set('expires', -1);
         }
 
+        $this->ensureIEOverSSLCompatibility($request);
+
         return $this;
+    }
+
+    /**
+     * Checks if we need to remove Cache-Control for SSL encrypted downloads when using IE < 9.
+     *
+     * @see http://support.microsoft.com/kb/323308
+     *
+     * @final
+     */
+    protected function ensureIEOverSSLCompatibility(Request $request)
+    {
+        if (false !== stripos($this->headers->get('Content-Disposition'), 'attachment') && 1 == preg_match('/MSIE (.*?);/i', $request->server->get('HTTP_USER_AGENT'), $match) && true === $request->isSecure()) {
+            if ((int) preg_replace('/(MSIE )(.*?);/', '$2', $match[0]) < 9) {
+                $this->headers->remove('Cache-Control');
+            }
+        }
     }
 
     /**
@@ -516,6 +534,278 @@ class Response implements ResponseContract
         return $this->charset;
     }
 
+
+    /**
+     * Sets the ETag value.
+     *
+     * @param string|null $etag The ETag unique identifier or null to remove the header
+     * @param bool        $weak Whether you want a weak ETag or not
+     *
+     * @return $this
+     *
+     * @final
+     */
+    public function setEtag(string $etag = null, bool $weak = false)
+    {
+        if (null === $etag) {
+            $this->headers->remove('Etag');
+        } else {
+            if (0 !== strpos($etag, '"')) {
+                $etag = '"'.$etag.'"';
+            }
+
+            $this->headers->set('ETag', (true === $weak ? 'W/' : '').$etag);
+        }
+
+        return $this;
+    }
+
+    /**
+     * Sets the response's cache headers (validation and/or expiration).
+     *
+     * Available options are: etag, last_modified, max_age, s_maxage, private, public and immutable.
+     *
+     * @return $this
+     *
+     * @throws \InvalidArgumentException
+     *
+     * @final
+     */
+    public function setCache(array $options)
+    {
+        if ($diff = array_diff(array_keys($options), array('etag', 'last_modified', 'max_age', 's_maxage', 'private', 'public', 'immutable'))) {
+            throw new \InvalidArgumentException(sprintf('Response does not support the following options: "%s".', implode('", "', $diff)));
+        }
+
+        if (isset($options['etag'])) {
+            $this->setEtag($options['etag']);
+        }
+
+        if (isset($options['last_modified'])) {
+            $this->setLastModified($options['last_modified']);
+        }
+
+        if (isset($options['max_age'])) {
+            $this->setMaxAge($options['max_age']);
+        }
+
+        if (isset($options['s_maxage'])) {
+            $this->setSharedMaxAge($options['s_maxage']);
+        }
+
+        if (isset($options['public'])) {
+            if ($options['public']) {
+                $this->setPublic();
+            } else {
+                $this->setPrivate();
+            }
+        }
+
+        if (isset($options['private'])) {
+            if ($options['private']) {
+                $this->setPrivate();
+            } else {
+                $this->setPublic();
+            }
+        }
+
+        if (isset($options['immutable'])) {
+            $this->setImmutable((bool) $options['immutable']);
+        }
+
+        return $this;
+    }
+    /**
+     * Returns the Last-Modified HTTP header as a DateTime instance.
+     *
+     * @throws \RuntimeException When the HTTP header is not parseable
+     *
+     * @final
+     */
+    public function getLastModified(): ?\DateTimeInterface
+    {
+        return $this->headers->getDate('Last-Modified');
+    }
+
+    /**
+     * Determines if the Response validators (ETag, Last-Modified) match
+     * a conditional value specified in the Request.
+     *
+     * If the Response is not modified, it sets the status code to 304 and
+     * removes the actual content by calling the setNotModified() method.
+     *
+     * @return bool true if the Response validators match the Request, false otherwise
+     *
+     * @final
+     */
+    public function isNotModified(Request $request): bool
+    {
+        if (!$request->isMethodCacheable()) {
+            return false;
+        }
+
+        $notModified = false;
+        $lastModified = $this->headers->get('Last-Modified');
+        $modifiedSince = $request->headers->get('If-Modified-Since');
+
+        if ($etags = $request->getETags()) {
+            $notModified = \in_array($this->getEtag(), $etags) || \in_array('*', $etags);
+        }
+
+        if ($modifiedSince && $lastModified) {
+            $notModified = strtotime($modifiedSince) >= strtotime($lastModified) && (!$etags || $notModified);
+        }
+
+        if ($notModified) {
+            $this->setNotModified();
+        }
+
+        return $notModified;
+    }
+    /**
+     * Modifies the response so that it conforms to the rules defined for a 304 status code.
+     *
+     * This sets the status, removes the body, and discards any headers
+     * that MUST NOT be included in 304 responses.
+     *
+     * @return $this
+     *
+     * @see http://tools.ietf.org/html/rfc2616#section-10.3.5
+     *
+     * @final
+     */
+    public function setNotModified()
+    {
+        $this->setStatusCode(304);
+        $this->setContent(null);
+
+        // remove headers that MUST NOT be included with 304 Not Modified responses
+        foreach (array('Allow', 'Content-Encoding', 'Content-Language', 'Content-Length', 'Content-MD5', 'Content-Type', 'Last-Modified') as $header) {
+            $this->headers->remove($header);
+        }
+
+        return $this;
+    }
+    /**
+     * Returns the literal value of the ETag HTTP header.
+     *
+     * @final
+     */
+    public function getEtag(): ?string
+    {
+        return $this->headers->get('ETag');
+    }
+
+    /**
+     * Marks the response as "immutable".
+     *
+     * @return $this
+     *
+     * @final
+     */
+    public function setImmutable(bool $immutable = true)
+    {
+        if ($immutable) {
+            $this->headers->addCacheControlDirective('immutable');
+        } else {
+            $this->headers->removeCacheControlDirective('immutable');
+        }
+
+        return $this;
+    }
+
+    /**
+     * Returns true if the response is marked as "immutable".
+     *
+     * @final
+     */
+    public function isImmutable(): bool
+    {
+        return $this->headers->hasCacheControlDirective('immutable');
+    }
+
+    /**
+     * Sets the Last-Modified HTTP header with a DateTime instance.
+     *
+     * Passing null as value will remove the header.
+     *
+     * @return $this
+     *
+     * @final
+     */
+    public function setLastModified(\DateTimeInterface $date = null)
+    {
+        if (null === $date) {
+            $this->headers->remove('Last-Modified');
+
+            return $this;
+        }
+
+        if ($date instanceof \DateTime) {
+            $date = \DateTimeImmutable::createFromMutable($date);
+        }
+
+        $date = $date->setTimezone(new \DateTimeZone('UTC'));
+        $this->headers->set('Last-Modified', $date->format('D, d M Y H:i:s').' GMT');
+
+        return $this;
+    }
+
+    /**
+     * Returns true if the response may safely be kept in a shared (surrogate) cache.
+     *
+     * Responses marked "private" with an explicit Cache-Control directive are
+     * considered uncacheable.
+     *
+     * Responses with neither a freshness lifetime (Expires, max-age) nor cache
+     * validator (Last-Modified, ETag) are considered uncacheable because there is
+     * no way to tell when or how to remove them from the cache.
+     *
+     * Note that RFC 7231 and RFC 7234 possibly allow for a more permissive implementation,
+     * for example "status codes that are defined as cacheable by default [...]
+     * can be reused by a cache with heuristic expiration unless otherwise indicated"
+     * (https://tools.ietf.org/html/rfc7231#section-6.1)
+     *
+     * @final
+     */
+    public function isCacheable(): bool
+    {
+        if (!\in_array($this->statusCode, array(200, 203, 300, 301, 302, 404, 410))) {
+            return false;
+        }
+
+        if ($this->headers->hasCacheControlDirective('no-store') || $this->headers->getCacheControlDirective('private')) {
+            return false;
+        }
+
+        return $this->isValidateable() || $this->isFresh();
+    }
+
+    /**
+     * Returns true if the response is "fresh".
+     *
+     * Fresh responses may be served from cache without any interaction with the
+     * origin. A response is considered fresh when it includes a Cache-Control/max-age
+     * indicator or Expires header and the calculated age is less than the freshness lifetime.
+     *
+     * @final
+     */
+    public function isFresh(): bool
+    {
+        return $this->getTtl() > 0;
+    }
+
+    /**
+     * Returns true if the response includes headers that can be used to validate
+     * the response with the origin server using a conditional GET request.
+     *
+     * @final
+     */
+    public function isValidateable(): bool
+    {
+        return $this->headers->has('Last-Modified') || $this->headers->has('ETag');
+    }
+
     /**
      * Is response invalid?
      *
@@ -528,6 +818,243 @@ class Response implements ResponseContract
         return $this->statusCode < 100 || $this->statusCode >= 600;
     }
 
+    /**
+     * Sets the response's time-to-live for shared caches in seconds.
+     *
+     * This method adjusts the Cache-Control/s-maxage directive.
+     *
+     * @return $this
+     *
+     * @final
+     */
+    public function setTtl(int $seconds)
+    {
+        $this->setSharedMaxAge($this->getAge() + $seconds);
+
+        return $this;
+    }
+    /**
+     * Sets the response's time-to-live for private/client caches in seconds.
+     *
+     * This method adjusts the Cache-Control/max-age directive.
+     *
+     * @return $this
+     *
+     * @final
+     */
+    public function setClientTtl(int $seconds)
+    {
+        $this->setMaxAge($this->getAge() + $seconds);
+
+        return $this;
+    }
+    /**
+     * Returns the response's time-to-live in seconds.
+     *
+     * It returns null when no freshness information is present in the response.
+     *
+     * When the responses TTL is <= 0, the response may not be served from cache without first
+     * revalidating with the origin.
+     *
+     * @final
+     */
+    public function getTtl(): ?int
+    {
+        $maxAge = $this->getMaxAge();
+
+        return null !== $maxAge ? $maxAge - $this->getAge() : null;
+    }
+    /**
+     * Returns the age of the response in seconds.
+     *
+     * @final
+     */
+    public function getAge(): int
+    {
+        if (null !== $age = $this->headers->get('Age')) {
+            return (int) $age;
+        }
+
+        return max(time() - $this->getDate()->format('U'), 0);
+    }
+
+    /**
+     * Marks the response stale by setting the Age header to be equal to the maximum age of the response.
+     *
+     * @return $this
+     */
+    public function expire()
+    {
+        if ($this->isFresh()) {
+            $this->headers->set('Age', $this->getMaxAge());
+            $this->headers->remove('Expires');
+        }
+
+        return $this;
+    }
+
+    /**
+     * Returns the value of the Expires header as a DateTime instance.
+     *
+     * @final
+     */
+    public function getExpires(): ?\DateTimeInterface
+    {
+        try {
+            return $this->headers->getDate('Expires');
+        } catch (\RuntimeException $e) {
+            // according to RFC 2616 invalid date formats (e.g. "0" and "-1") must be treated as in the past
+            return \DateTime::createFromFormat('U', time() - 172800);
+        }
+    }
+
+    /**
+     * Sets the Expires HTTP header with a DateTime instance.
+     *
+     * Passing null as value will remove the header.
+     *
+     * @return $this
+     *
+     * @final
+     */
+    public function setExpires(\DateTimeInterface $date = null)
+    {
+        if (null === $date) {
+            $this->headers->remove('Expires');
+
+            return $this;
+        }
+
+        if ($date instanceof \DateTime) {
+            $date = \DateTimeImmutable::createFromMutable($date);
+        }
+
+        $date = $date->setTimezone(new \DateTimeZone('UTC'));
+        $this->headers->set('Expires', $date->format('D, d M Y H:i:s').' GMT');
+
+        return $this;
+    }
+
+    /**
+     * Returns the number of seconds after the time specified in the response's Date
+     * header when the response should no longer be considered fresh.
+     *
+     * First, it checks for a s-maxage directive, then a max-age directive, and then it falls
+     * back on an expires header. It returns null when no maximum age can be established.
+     *
+     * @final
+     */
+    public function getMaxAge(): ?int
+    {
+        if ($this->headers->hasCacheControlDirective('s-maxage')) {
+            return (int) $this->headers->getCacheControlDirective('s-maxage');
+        }
+
+        if ($this->headers->hasCacheControlDirective('max-age')) {
+            return (int) $this->headers->getCacheControlDirective('max-age');
+        }
+
+        if (null !== $this->getExpires()) {
+            return (int) ($this->getExpires()->format('U') - $this->getDate()->format('U'));
+        }
+
+        return null;
+    }
+    /**
+     * Sets the number of seconds after which the response should no longer be considered fresh by shared caches.
+     *
+     * This methods sets the Cache-Control s-maxage directive.
+     *
+     * @return $this
+     *
+     * @final
+     */
+    public function setSharedMaxAge(int $value)
+    {
+        $this->setPublic();
+        $this->headers->addCacheControlDirective('s-maxage', $value);
+
+        return $this;
+    }
+    /**
+     * Marks the response as "public".
+     *
+     * It makes the response eligible for serving other clients.
+     *
+     * @return $this
+     *
+     * @final
+     */
+    public function setPublic()
+    {
+        $this->headers->addCacheControlDirective('public');
+        $this->headers->removeCacheControlDirective('private');
+
+        return $this;
+    }
+
+    /**
+     * Marks the response as "private".
+     *
+     * It makes the response ineligible for serving other clients.
+     *
+     * @return $this
+     *
+     * @final
+     */
+    public function setPrivate()
+    {
+        $this->headers->removeCacheControlDirective('public');
+        $this->headers->addCacheControlDirective('private');
+
+        return $this;
+    }
+    /**
+     * Sets the number of seconds after which the response should no longer be considered fresh.
+     *
+     * This methods sets the Cache-Control max-age directive.
+     *
+     * @return $this
+     *
+     * @final
+     */
+    public function setMaxAge(int $value)
+    {
+        $this->headers->addCacheControlDirective('max-age', $value);
+
+        return $this;
+    }
+
+    /**
+     * Returns the Date header as a DateTime instance.
+     *
+     * @throws \RuntimeException When the header is not parseable
+     *
+     * @final
+     */
+    public function getDate(): ?\DateTimeInterface
+    {
+        return $this->headers->getDate('Date');
+    }
+
+    /**
+     * Sets the Date header.
+     *
+     * @return $this
+     *
+     * @final
+     */
+    public function setDate(\DateTimeInterface $date)
+    {
+        if ($date instanceof \DateTime) {
+            $date = \DateTimeImmutable::createFromMutable($date);
+        }
+
+        $date = $date->setTimezone(new \DateTimeZone('UTC'));
+        $this->headers->set('Date', $date->format('D, d M Y H:i:s').' GMT');
+
+        return $this;
+    }
     /**
      * Is response informative?
      *
