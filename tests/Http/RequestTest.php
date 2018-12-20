@@ -331,7 +331,7 @@ class RequestTest extends TestCase
     public function getFormatToMimeTypeMapProviderWithAdditionalNullFormat()
     {
         return array_merge(
-            array(array(null, array(null, 'unexistent-mime-type'))),
+            array(array('', array('', 'unexistent-mime-type'))),
             $this->getFormatToMimeTypeMapProvider()
         );
     }
@@ -769,14 +769,6 @@ class RequestTest extends TestCase
 
         unset($_GET['foo1'], $_POST['foo2'], $_COOKIE['foo3'], $_FILES['foo4'], $_SERVER['foo5']);
 
-        $_SERVER['REQUEST_METHOD'] = $method;
-        $_SERVER['CONTENT_TYPE'] = 'application/x-www-form-urlencoded';
-        $request = RequestContentProxy::createFromGlobals();
-        $this->assertEquals($normalizedMethod, $request->getMethod());
-        $this->assertEquals('mycontent', $request->request->get('content'));
-
-        unset($_SERVER['REQUEST_METHOD'], $_SERVER['CONTENT_TYPE']);
-
         Request::createFromGlobals();
         Request::enableHttpMethodParameterOverride();
         $_POST['_method'] = $method;
@@ -1040,21 +1032,5 @@ class RequestTest extends TestCase
         $this->assertEquals($queryString, $request->getQueryString());
         $this->assertEquals(8080, $request->getPort());
         $this->assertEquals('host:8080', $request->getHttpHost());
-    }
-}
-
-class RequestContentProxy extends Request
-{
-    public function getContent($asResource = false)
-    {
-        return http_build_query(array('_method' => 'PUT', 'content' => 'mycontent'), '', '&');
-    }
-}
-
-class NewRequest extends Request
-{
-    public function getFoo()
-    {
-        return 'foo';
     }
 }

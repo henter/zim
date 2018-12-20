@@ -308,6 +308,8 @@ class Request implements \Zim\Contract\Request
         }
         $dup->pathInfo = null;
         $dup->requestUri = null;
+        $dup->basePath = null;
+        $dup->baseUrl = null;
         $dup->method = null;
         $dup->format = null;
 
@@ -420,7 +422,7 @@ class Request implements \Zim\Contract\Request
      */
     public function getContentType()
     {
-        return $this->getFormat($this->headers->get('CONTENT_TYPE'));
+        return $this->getFormat((string)$this->headers->get('CONTENT_TYPE'));
     }
 
     /**
@@ -462,7 +464,7 @@ class Request implements \Zim\Contract\Request
      *
      * @return string|null The format (null if not found)
      */
-    public function getFormat($mimeType)
+    public function getFormat(string $mimeType)
     {
         $canonicalMimeType = null;
         if (false !== $pos = strpos($mimeType, ';')) {
