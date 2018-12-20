@@ -147,8 +147,6 @@ class JsonResponse extends Response
      */
     public function setData($data = [])
     {
-        $this->original = $data;
-
         if ($data instanceof Jsonable) {
             $this->data = $data->toJson($this->encodingOptions);
         } elseif ($data instanceof \JsonSerializable) {
