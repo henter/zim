@@ -91,12 +91,14 @@ class Router
             $defaults['_controller'] = 'App\\Controller\\' . str_replace('/', '\\', $controller) . 'Controller';
             $defaults['_action'] = $action . 'Action';
 
-        }else if (strpos($info, '@')) {
+        }else if (is_string($info) && strpos($info, '@')) {
             list($controller, $action) = explode('@', $info);
             $defaults = [
                 '_controller' => 'App\\Controller\\' . str_replace('/', '\\', $controller) . 'Controller',
                 '_action' => $action . 'Action',
             ];
+        } else {
+            throw new \RuntimeException("create route failed, $uri not callable");
         }
 
         return new Route($uri, $defaults, $requirements, $methods, $options);

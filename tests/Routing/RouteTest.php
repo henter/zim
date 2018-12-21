@@ -16,6 +16,18 @@ use Zim\Routing\Route;
 
 class RouteTest extends TestCase
 {
+
+    public function testParameters()
+    {
+        $route = new Route('/{foo}', ['foo' => 'bar']);
+        $route->setParameters(['x' => 'y']);
+        $this->assertEquals(['foo' => 'bar', 'x' => 'y'], $route->getParameters(), '->setParameters() sets and merge parameters and defaults');
+
+        $route = new Route('/');
+        $route->setParameters(['x' => 'y']);
+        $this->assertEquals(['x' => 'y'], $route->getParameters(), '->setParameters() sets and merge parameters and defaults');
+    }
+
     public function testConstructor()
     {
         $route = new Route('/{foo}', array('foo' => 'bar'), array('foo' => '\d+'), [], array('foo' => 'bar'));

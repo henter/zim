@@ -7,19 +7,17 @@
 
 namespace Zim\Http;
 
-use Zim\Contract\Arrayable;
-use Zim\Contract\Jsonable;
-use Zim\Contract\Responsable;
 use Zim\Event\DispatchEvent;
 use Zim\Event\Event;
 use Zim\Event\RequestEvent;
 use Zim\Event\ResponseEvent;
 use Zim\Event\TerminateEvent;
-use Zim\Http\Exception\NotFoundException;
-use Zim\Http\Exception\ResponseException;
 use Zim\Routing\Router;
 use Zim\Support\Str;
 use Zim\Zim;
+use Zim\Contract\Arrayable;
+use Zim\Contract\Jsonable;
+use Zim\Http\Exception\NotFoundException;
 
 class Kernel
 {
@@ -55,6 +53,7 @@ class Kernel
             return false;
         }
 
+        //TODO, support "GET /uri => xx"
         foreach ($configs as $pattern => $to) {
             $this->router->addRoute([], $pattern, $to);
         }
