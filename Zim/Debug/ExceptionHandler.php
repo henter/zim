@@ -28,13 +28,15 @@ class ExceptionHandler
 {
     private $debug;
     private $charset;
-    private $fileLinkFormat;
+    private $fileLinkFormat = "phpstorm://open?file=%f&line=%l";
 
     public function __construct(bool $debug = true, $fileLinkFormat = null)
     {
         $this->debug = $debug;
         $this->charset = ini_get('default_charset') ?: 'UTF-8';
-        $this->fileLinkFormat = $fileLinkFormat;
+        if ($fileLinkFormat) {
+            $this->fileLinkFormat = $fileLinkFormat;
+        }
     }
 
     /**
@@ -178,6 +180,9 @@ EOF;
      */
     public function getStylesheet()
     {
+        if (!$this->debug) {
+            return '';
+        }
         return <<<'EOF'
             body { background-color: #F9F9F9; color: #222; font: 14px/1.4 Helvetica, Arial, sans-serif; margin: 0; padding-bottom: 45px; }
 

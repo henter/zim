@@ -132,12 +132,11 @@ class ErrorHandler
 
     /**
      * @param $exception
-     * @param array|null $error
      * @return mixed
      * @throws FatalErrorException
      * @throws \Throwable
      */
-    public function handleException($exception, array $error = null)
+    public function handleException($exception)
     {
         if (!$exception instanceof \Exception) {
             $exception = new FatalErrorException($exception);

@@ -194,6 +194,14 @@ class Zim extends Container
     }
 
     /**
+     * @return bool
+     */
+    public function inExtension()
+    {
+        return extension_loaded("zim");
+    }
+
+    /**
      * Get the base path for the application.
      *
      * @param  string|null $path
@@ -280,7 +288,7 @@ class Zim extends Container
         //do not handle for console
         if (!$this->inConsole()) {
             ini_set('display_errors', 0);
-            ExceptionHandler::register(true, "phpstorm://open?file=%f&line=%l");
+            ExceptionHandler::register();
             ErrorHandler::register();
         }
     }
