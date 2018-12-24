@@ -9,6 +9,7 @@ namespace Zim\Http;
 
 use Zim\Event\DispatchEvent;
 use Zim\Event\Event;
+use Zim\Event\ExceptionEvent;
 use Zim\Event\RequestEvent;
 use Zim\Event\ResponseEvent;
 use Zim\Event\TerminateEvent;
@@ -77,16 +78,37 @@ class Kernel
         }
 
         try {
-            $response = $this->dispatchToRouter($request);
-        } catch (NotFoundException $e) {
-            $response = $this->dispatchToDefault($request);
+            try {
+                $response = $this->dispatchToRouter($request);
+            } catch (NotFoundException $e) {
+                $response = $this->dispatchToDefault($request);
+            }
+            $respEvent = new ResponseEvent($request, $response);
+            Event::fire($respEvent);
+            return $respEvent->getResponse()->prepare($request);
         } catch (\Throwable $e) {
+            $response = $this->handleException($e, $request);
+            return $response->prepare($request);
+        }
+    }
+
+    /**
+     * Handles an exception by trying to convert it to a Response.
+     *
+     * @param \Exception $e       An \Exception instance
+     * @param Request    $request A Request instance
+     * @return Response
+     * @throws \Exception
+     */
+    private function handleException(\Exception $e, Request $request): Response
+    {
+        $event = new ExceptionEvent($e, $request);
+        Event::fire($event, null, true);
+        if (!$resp = $event->getResponse()) {
             throw $e;
         }
 
-        $respEvent = new ResponseEvent($request, $response);
-        Event::fire($respEvent);
-        return $respEvent->getResponse()->prepare($request);
+        return $resp;
     }
 
     /**
@@ -172,6 +194,10 @@ class Kernel
         //try controller action ?
         if ($method = $controller->getAction($a)) {
             $callable = [$controller, $method];
+            //maybe private method?
+            if (!is_callable($callable)) {
+                throw new NotFoundException('action not found '.$callable[1]);
+            }
         } else {
             //try controller action class
             if (!class_exists($actionClass = $controller->getActionClass($a))) {

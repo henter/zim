@@ -10,6 +10,7 @@ namespace Zim;
 
 use Zim\Container\Container;
 use Zim\Event\Event;
+use Zim\Http\Kernel;
 use Zim\Service\LogService;
 use Zim\Service\Service;
 use Zim\Debug\ErrorHandler;
@@ -350,5 +351,23 @@ class Zim extends Container
         }
 
         return self::app('config')->get($key, $default);
+    }
+
+    /**
+     * 默认启动入口
+     */
+    public static function run()
+    {
+        $zim = static::getInstance();
+        $zim->singleton(Kernel::class);
+
+        /**
+         * @var Kernel $http
+         */
+        $http = $zim->make(Kernel::class);
+        $request = Request::createFromGlobals();
+        $response = $http->handle($request);
+        $response->send();
+        $http->terminate($request, $response);
     }
 }

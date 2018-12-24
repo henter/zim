@@ -87,7 +87,7 @@ class Router
             $requirements = $info['requirements'] ?? [];
             $options = $info['options'] ?? [];
 
-            list($controller, $action) = explode('@', $info['use']);
+            list($controller, $action) = strpos($info['to'], '@') ? explode('@', $info['to']) : [$info['to'], 'index'];
             $defaults['_controller'] = 'App\\Controller\\' . str_replace('/', '\\', $controller) . 'Controller';
             $defaults['_action'] = $action . 'Action';
 

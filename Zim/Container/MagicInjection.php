@@ -13,8 +13,6 @@ trait MagicInjection
      * @param       $callback
      * @param array $parameters
      * @return mixed
-     * @throws BindingResolutionException
-     * @throws \ReflectionException
      */
     public function call($callback, array $parameters = [])
     {

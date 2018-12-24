@@ -52,4 +52,9 @@ class IndexController extends Controller
     {
         return 'hello '.$world;
     }
+
+    private function privateMethodTestAction()
+    {
+        return  __FUNCTION__;
+    }
 }

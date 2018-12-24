@@ -10,6 +10,7 @@ namespace App\Service;
 
 use Zim\Event\DispatchEvent;
 use Zim\Event\Event;
+use Zim\Event\ExceptionEvent;
 use Zim\Event\RequestEvent;
 use Zim\Event\ResponseEvent;
 use Zim\Http\JsonResponse;
@@ -23,6 +24,7 @@ class AppService extends Service
         $events = [
             RequestEvent::class,
             ResponseEvent::class,
+            ExceptionEvent::class,
         ];
 
         Event::listen($events, function($e, $payload) {
@@ -38,6 +40,10 @@ class AppService extends Service
             if ($e == ResponseEvent::class && $payload instanceof ResponseEvent) {
                 $resp = new Response('test response event');
                 //$payload->setResponse($resp);
+            }
+            if ($e == ExceptionEvent::class && $payload instanceof ExceptionEvent) {
+                $resp = new Response('test catch exception: '.$payload->getThrowable()->getMessage());
+                $payload->setResponse($resp);
             }
         });
 

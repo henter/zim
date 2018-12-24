@@ -7,12 +7,16 @@
  */
 
 namespace Zim\Event;
+use Zim\Http\Request;
+use Zim\Http\Response;
 
-use Zim\Contract\Request;
-use Zim\Contract\Response;
-
-abstract class HttpEvent
+class ExceptionEvent
 {
+    /**
+     * @var \Throwable
+     */
+    protected $e;
+
     /**
      * @var Request
      */
@@ -23,10 +27,19 @@ abstract class HttpEvent
      */
     protected $response;
 
-    public function __construct(Request $request, Response $response = null)
+    public function __construct(\Throwable $e, Request $request, Response $response = null)
     {
+        $this->e = $e;
         $this->request = $request;
         $this->response = $response;
+    }
+
+    /**
+     * @return \Throwable
+     */
+    public function getThrowable()
+    {
+        return $this->e;
     }
 
     /**
@@ -48,20 +61,11 @@ abstract class HttpEvent
     }
 
     /**
-     * Returns whether a response was set.
-     *
-     * @return bool Whether a response was set
-     */
-    public function hasResponse()
-    {
-        return null !== $this->response;
-    }
-
-    /**
      * @return Request
      */
     public function getRequest()
     {
         return $this->request;
     }
+
 }

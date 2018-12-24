@@ -16,16 +16,23 @@ Route::any('/xx/{x<\d+>?1}', 'Index@test');
 Route::post('/test_route1/{page<\d+>?123}', function($page) {
     return 'test ok';
 });
+
+Route::match(['POST', 'PUT', 'GET'], '/put', function() {
+    return 'test match';
+});
+
 return [
     '/'                   => 'Index@index',
+    'closure' => function() {
+        return 'closure ok';
+    },
     '/test'               => 'Index@test',
     '/demo'               => 'Demo/Index@test',
     '/post/{page<\d+>?1}' => 'Index@post',
     '/foo'                => 'Foo@index',
     '/foo/test'           => 'Foo@foo',
     '/hello/{world}' => [
-        'name' => 'hello',
-        'use' => 'Index@hello',
+        'to' => 'Index@hello',
         'methods' => ['GET', 'POST'],
         'requirements' => [
             'world' => '\d+',

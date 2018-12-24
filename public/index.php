@@ -6,15 +6,22 @@
  *
  */
 
-/**
- * @var \Zim\Zim $zim
- */
-$zim = require __DIR__.'/../app/bootstrap.php';
+require_once __DIR__.'/../vendor/autoload.php';
 
-$http = $zim->make(\Zim\Http\Kernel::class);
-$request = \Zim\Http\Request::createFromGlobals();
-$response = $http->handle($request);
-$response->send();
-$http->terminate($request, $response);
+define('APP_PATH', __DIR__);
+
+//simple start
+\Zim\Zim::run();
+
+
+////full start
+//$zim = Zim\Zim::getInstance();
+//$zim->singleton(\Zim\Http\Kernel::class);
+//
+//$http = $zim->make(\Zim\Http\Kernel::class);
+//$request = \Zim\Http\Request::createFromGlobals();
+//$response = $http->handle($request);
+//$response->send();
+//$http->terminate($request, $response);
 
 

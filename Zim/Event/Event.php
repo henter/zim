@@ -12,9 +12,6 @@ use Zim\Zim;
 
 class Event
 {
-    //uncaught exception
-    const EXCEPTION = 'zim.exception';
-
     /**
      * @param $event
      * @param array $payload
