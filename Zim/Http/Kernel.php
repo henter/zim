@@ -7,8 +7,8 @@
 
 namespace Zim\Http;
 
-use Zim\Event\DispatchEvent;
 use Zim\Event\Event;
+use Zim\Event\DispatchEvent;
 use Zim\Event\ExceptionEvent;
 use Zim\Event\RequestEvent;
 use Zim\Event\ResponseEvent;
@@ -68,16 +68,16 @@ class Kernel
      */
     public function handle(Request $request): Response
     {
-        $this->zim->instance('request', $request);
-        $this->zim->boot();
-
-        $requestEvent = new RequestEvent($request);
-        Event::fire($requestEvent);
-        if ($resp = $requestEvent->getResponse()) {
-            return $resp->prepare($request);
-        }
-
         try {
+            $this->zim->instance('request', $request);
+            $this->zim->boot();
+
+            $requestEvent = new RequestEvent($request);
+            Event::fire($requestEvent);
+            if ($resp = $requestEvent->getResponse()) {
+                return $resp->prepare($request);
+            }
+
             try {
                 $response = $this->dispatchToRouter($request);
             } catch (NotFoundException $e) {
@@ -95,12 +95,12 @@ class Kernel
     /**
      * Handles an exception by trying to convert it to a Response.
      *
-     * @param \Exception $e       An \Exception instance
+     * @param \Throwable $e       An \Exception instance
      * @param Request    $request A Request instance
      * @return Response
-     * @throws \Exception
+     * @throws \Throwable
      */
-    private function handleException(\Exception $e, Request $request): Response
+    private function handleException(\Throwable $e, Request $request): Response
     {
         $event = new ExceptionEvent($e, $request);
         Event::fire($event, null, true);

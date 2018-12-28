@@ -13,8 +13,7 @@ use Zim\Event\Event;
 use Zim\Http\Kernel;
 use Zim\Service\LogService;
 use Zim\Service\Service;
-use Zim\Debug\ErrorHandler;
-use Zim\Debug\ExceptionHandler;
+use Zim\Debug\Handler as DebugHandler;
 use Zim\Event\Dispatcher;
 use Zim\Routing\Router;
 use Zim\Http\Request;
@@ -289,11 +288,9 @@ class Zim extends Container
         //do not handle for console
         if (!$this->inConsole()) {
             ini_set('display_errors', 0);
-            ExceptionHandler::register();
-            ErrorHandler::register();
+            DebugHandler::register();
         }
     }
-
 
     /**
      * helpers
@@ -325,10 +322,10 @@ class Zim extends Container
     public static function app($make = null)
     {
         if (is_null($make)) {
-            return Zim::getInstance();
+            return static::getInstance();
         }
 
-        return Zim::getInstance()->make($make);
+        return static::getInstance()->make($make);
     }
 
     /**

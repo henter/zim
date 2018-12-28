@@ -6,22 +6,9 @@
  *
  */
 
-require_once __DIR__.'/../vendor/autoload.php';
-
+require __DIR__.'/../vendor/autoload.php';
 define('APP_PATH', __DIR__);
 
-//simple start
-\Zim\Zim::run();
+use Zim\Zim;
 
-
-////full start
-//$zim = Zim\Zim::getInstance();
-//$zim->singleton(\Zim\Http\Kernel::class);
-//
-//$http = $zim->make(\Zim\Http\Kernel::class);
-//$request = \Zim\Http\Request::createFromGlobals();
-//$response = $http->handle($request);
-//$response->send();
-//$http->terminate($request, $response);
-
-
+Zim::run();

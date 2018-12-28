@@ -2,32 +2,23 @@
 
 namespace Zim\Service;
 
-use Zim\Zim;
-
 abstract class Service
 {
     /**
-     * @var Zim
-     */
-    protected $zim;
-
-    /**
      * Create a new service provider instance.
      *
-     * @param  Zim $zim
      * @return void
      */
-    public function __construct(Zim $zim)
+    public function __construct()
     {
-        $this->zim = $zim;
     }
 
-    //execute for every request
+    //your logic code here, invoked before handling request
     public function boot()
     {
     }
 
-    //execute once
+    //only for register service, binding object to container, or other bootstrap code
     public function register()
     {
     }

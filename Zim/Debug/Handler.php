@@ -24,11 +24,31 @@ namespace Zim\Debug;
  * @author Fabien Potencier <fabien@symfony.com>
  * @author Nicolas Grekas <p@tchwork.com>
  */
-class ExceptionHandler
+class Handler
 {
     private $debug;
     private $charset;
     private $fileLinkFormat = "phpstorm://open?file=%f&line=%l";
+
+    private $errorLevels = array(
+        E_DEPRECATED => 'Deprecated',
+        E_USER_DEPRECATED => 'User Deprecated',
+        E_NOTICE => 'Notice',
+        E_USER_NOTICE => 'User Notice',
+        E_STRICT => 'Runtime Notice',
+        E_WARNING => 'Warning',
+        E_USER_WARNING => 'User Warning',
+        E_COMPILE_WARNING => 'Compile Warning',
+        E_CORE_WARNING => 'Core Warning',
+        E_USER_ERROR => 'User Error',
+        E_RECOVERABLE_ERROR => 'Catchable Fatal Error',
+        E_COMPILE_ERROR => 'Compile Error',
+        E_PARSE => 'Parse Error',
+        E_ERROR => 'Error',
+        E_CORE_ERROR => 'Core Error',
+    );
+
+    private $traceReflector;
 
     public function __construct(bool $debug = true, $fileLinkFormat = null)
     {
@@ -37,6 +57,9 @@ class ExceptionHandler
         if ($fileLinkFormat) {
             $this->fileLinkFormat = $fileLinkFormat;
         }
+
+        $this->traceReflector = new \ReflectionProperty('Exception', 'trace');
+        $this->traceReflector->setAccessible(true);
     }
 
     /**
@@ -47,24 +70,88 @@ class ExceptionHandler
      *
      * @return static
      */
-    public static function register($debug = true, $fileLinkFormat = null)
+    public static function register(bool $debug = true, $fileLinkFormat = null)
     {
         $handler = new static($debug, $fileLinkFormat);
-        set_exception_handler(array($handler, 'handle'));
+
+        //error_reporting(-1);
+
+        set_error_handler([$handler, 'handleError']);
+
+        set_exception_handler([$handler, 'handleException']);
+
+        register_shutdown_function([$handler, 'handleShutdown']);
+
         return $handler;
     }
 
     /**
-     * Sends a response for the given Exception.
+     * Handle the PHP shutdown event.
      *
-     * To be as fail-safe as possible, the exception is first handled
-     * by our simple exception handler, then by the user exception handler.
-     * The latter takes precedence and any output from the former is cancelled,
-     * if and only if nothing bad happens in this handling path.
+     * @return void
      */
-    public function handle(\Exception $exception)
+    public function handleShutdown()
     {
-        $this->sendPhpResponse($exception);
+        if (! is_null($error = error_get_last()) && $this->isFatal($error['type'])) {
+            $this->handleException(new \ErrorException($error['message'], $error['type'], 0, $error['file'], $error['line']));
+        }
+    }
+
+    /**
+     * Determine if the error type is fatal.
+     *
+     * @param  int  $type
+     * @return bool
+     */
+    protected function isFatal($type)
+    {
+        return in_array($type, [E_COMPILE_ERROR, E_CORE_ERROR, E_ERROR, E_PARSE]);
+    }
+
+    /**
+     * Handles errors by filtering then logging them according to the configured bit fields.
+     *
+     * @param int    $level    One of the E_* constants
+     * @param string $message
+     * @param string $file
+     * @param int    $line
+     * @param array  $context
+     *
+     * @throws \ErrorException
+     *
+     * @internal
+     */
+    public function handleError(int $level, string $message, string $file, int $line, array $context = [])
+    {
+        if (error_reporting() & $level) {
+            $msg = $this->errorLevels[$level].': '.$message;
+            $errorAsException = new \ErrorException($msg, 0, $level, $file, $line);
+            $this->traceReflector->setValue($errorAsException, $errorAsException->getTrace());
+            throw $errorAsException;
+        }
+    }
+
+    /**
+     * @param \Throwable $exception
+     * @throws FatalErrorException
+     * @throws \Throwable
+     */
+    public function handleException(\Throwable $exception)
+    {
+        if (!$exception instanceof \Exception) {
+            $exception = new FatalErrorException($exception);
+        }
+        $handlerException = null;
+
+        try {
+            $this->sendPhpResponse($exception);
+            return;
+        } catch (\Throwable $handlerException) {
+        }
+        if ($exception === $handlerException) {
+            throw $exception; // to native
+        }
+        $this->handleException($handlerException);
     }
 
     /**
@@ -89,6 +176,22 @@ class ExceptionHandler
             header('Content-Type: text/html; charset='.$this->charset);
         }
         echo $this->decorate($this->getContent($exception), $this->getStylesheet());
+    }
+
+    /**
+     * Gets the full HTML content associated with the given exception.
+     *
+     * @param \Exception|FlattenException $exception An \Exception or FlattenException instance
+     *
+     * @return string The HTML content as a string
+     */
+    public function getHtml($exception)
+    {
+        if (!$exception instanceof FlattenException) {
+            $exception = FlattenException::create($exception);
+        }
+
+        return $this->decorate($this->getContent($exception), $this->getStylesheet());
     }
 
     /**

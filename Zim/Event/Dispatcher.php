@@ -39,7 +39,7 @@ class Dispatcher
      * @param  \Closure|string  $listener
      * @return \Closure
      */
-    public function makeListener($listener)
+    private function makeListener($listener)
     {
         return function ($event, $payload) use ($listener) {
             return $listener($event, $payload);
