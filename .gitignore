@@ -1,4 +1,5 @@
 /test.php
+/tests/coverage
 
 # Cache and logs
 /vendor/
