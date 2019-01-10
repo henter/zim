@@ -9,6 +9,4 @@
 require __DIR__.'/../vendor/autoload.php';
 define('APP_PATH', __DIR__);
 
-use Zim\Zim;
-
-Zim::run();
+\Zim\Zim::run();

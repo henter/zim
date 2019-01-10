@@ -4,20 +4,19 @@
     "type": "library",
     "autoload": {
         "psr-4": {
-            "App\\": "app/",
-            "Zim\\": "Zim/",
-            "Tests\\": "tests/"
+            "App\\": "app/"
         }
     },
     "require": {
-        "php": "^7.1.3"
+        "php": "^7.1.3",
+        "henter/zim-php": "dev-master"
     },
-    "repositories": {
-        "packagist": {
-            "type": "composer",
-            "url": "https://packagist.laravel-china.org"
+    "repositories": [
+        {
+            "type": "path",
+            "url": "/Users/henter/Dev/zim-php"
         }
-    },
+    ],
     "require-dev": {
     }
 }

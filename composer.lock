@@ -4,12 +4,39 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "679fd482ed8cf6cf1c2a710f895ced08",
-    "packages": [],
+    "content-hash": "baf6d42bb585b4fde487a332426cf4f1",
+    "packages": [
+        {
+            "name": "henter/zim-php",
+            "version": "dev-master",
+            "dist": {
+                "type": "path",
+                "url": "/Users/henter/Dev/zim-php",
+                "reference": "a48f5c656bc7be215ebef193393553a4459159e1",
+                "shasum": null
+            },
+            "require": {
+                "php": "^7.1.3"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^7.5"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Zim\\": "Zim/",
+                    "Zim\\Tests\\": "tests/"
+                }
+            },
+            "description": "Zim Framework"
+        }
+    ],
     "packages-dev": [],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": [],
+    "stability-flags": {
+        "henter/zim-php": 20
+    },
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {
