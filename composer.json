@@ -9,7 +9,7 @@
     },
     "require": {
         "php": "^7.1.3",
-        "henter/zim-php": "dev-master"
+        "henter/zim": "dev-master"
     },
     "repositories": [
         {
