@@ -1,4 +1,4 @@
-# [WIP] The Zim Framework
+# The Zim Framework
 
 ### About
 
