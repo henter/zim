@@ -53,7 +53,7 @@ see php version [zim-php](https://github.com/henter/zim-php)
 
 ### Documentation
 
-TODO
+https://github.com/henter/zim/wiki
 
 ### Contributing
 
